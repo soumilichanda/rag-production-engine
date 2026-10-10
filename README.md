@@ -1,0 +1,74 @@
+# Production RAG Engine 🧠⚡
+
+Production Retrieval-Augmented Generation (RAG) platform featuring strict Pydantic V2 data contracts, an in-memory L2-normalized cosine vector store, semantic reranking, and hallucination guardrails.
+
+![Architecture](https://img.shields.io/badge/Architecture-VectorDB%20%2B%20FastAPI-blue)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-success)
+![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)
+
+
+
+## 🏗️ System Overview
+
+The engine processes unstructured text via deterministic chunking, generates dense embeddings, performs normalized cosine similarity lookups, and scores nearest-neighbor context blocks for LLM generation:
+
+```text
+Document Stream / Raw Text
+            │
+            ▼
+┌────────────────────────────────────────────────────────┐
+│              Chunking & Schema Validator               │
+│  • Pydantic V2 DocumentChunk Strict Contracts          │
+│  • Metadata Tagging & Unique Chunk Identifier Hashes   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│            In-Memory Vector Search Engine              │
+│  • Unit L2 Normalization (Hypersphere Projection)      │
+│  • Cosine Similarity Dot Products: O(N * D)            │
+│  • Similarity Threshold Cutoff Filtering               │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│              Retrieved Context Payloads                │
+│   { chunk_id, text, similarity_score, metadata }       │
+└────────────────────────────────────────────────────────┘
+
+
+```
+## 📁 Repository Structure
+
+```
+rag-production-engine/
+├── app/
+│   ├── core/           # Reranking and guardrail algorithms
+│   ├── retrieval/      # Normalized cosine vector store
+│   └── schemas/        # Pydantic V2 data contracts
+├── tests/              # Pytest verification suites
+├── requirements.txt    # Production dependencies
+└── pytest.ini          # Test runner configuration
+```
+## ⚡ Core Engineering Invariants
+
+- **Unit $L_2$ Hypersphere Normalization (`app/retrieval/vector_store.py`):** Normalizes document and query vectors to unit length ($\Vert{}v\Vert{}_2 = 1$). This reduces similarity search to an $O(N \cdot D)$ matrix-vector dot product:
+  $$\text{sim}(q, d_i) = q \cdot d_i$$
+- **Strict Data Contracts (`app/schemas/payloads.py`):** Pydantic V2 models enforce payload bounds, non-empty chunks, bounded candidate limits ($1 \le k \le 20$), and numerical cutoff thresholds ($0.0 \le \tau \le 1.0$).
+- **Automated Invariant Verification (`tests/test_vector_store.py`):** Validates deterministic nearest-neighbor ranking, score-threshold pruning, and empty-index query resilience.
+
+## 🛠️ API & Schema Contracts
+
+| Model | Schema Name | Responsibility | Key Validations |
+| :--- | :--- | :--- | :--- |
+| **Ingestion Chunk** | `DocumentChunk` | Individual indexed passage | `min_length=5`, unique `chunk_id`, metadata dictionary |
+| **Ingestion Batch** | `IngestionRequest` | Bulk document ingestion payload | Validates non-empty document arrays |
+| **Query Request** | `QueryRequest` | Search parameters & filters | Top-$k$ integer range $[1, 20]$, threshold float $[0.0, 1.0]$ |
+| **Query Output** | `QueryResponse` | Ranked context chunks | Returns descending scores and latency profiling in ms |
+
+## 🧪 Automated Testing & Verification
+
+Run the test suite locally:
+
+```powershell
+pytest -v tests/
