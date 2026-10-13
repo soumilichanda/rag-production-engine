@@ -3,18 +3,19 @@ Vector store retrieval engine using L2-normalized cosine similarity.
 """
 
 import time
-from typing import List, Tuple
+
 import numpy as np
+
 from app.schemas.payloads import DocumentChunk, RetrievedChunk
 
 
 class InMemoryVectorStore:
     def __init__(self, dimension: int = 384):
         self.dimension = dimension
-        self.chunks: List[DocumentChunk] = []
+        self.chunks: list[DocumentChunk] = []
         self.embeddings: np.ndarray = np.empty((0, dimension), dtype=np.float32)
 
-    def add_documents(self, documents: List[DocumentChunk], embeddings: np.ndarray) -> int:
+    def add_documents(self, documents: list[DocumentChunk], embeddings: np.ndarray) -> int:
         if len(documents) != len(embeddings):
             raise ValueError("Document count must match embedding matrix rows")
 
@@ -31,7 +32,7 @@ class InMemoryVectorStore:
 
         return len(documents)
 
-    def query(self, query_embedding: np.ndarray, top_k: int = 3, threshold: float = 0.0) -> Tuple[List[RetrievedChunk], float]:
+    def query(self, query_embedding: np.ndarray, top_k: int = 3, threshold: float = 0.0) -> tuple[list[RetrievedChunk], float]:
         start_time = time.perf_counter()
 
         if self.embeddings.shape[0] == 0:
@@ -49,7 +50,7 @@ class InMemoryVectorStore:
         # Extract top-k indices descending
         top_indices = np.argsort(similarities)[::-1][:top_k]
 
-        results: List[RetrievedChunk] = []
+        results: list[RetrievedChunk] = []
         for idx in top_indices:
             score = float(similarities[idx])
             if score >= threshold:

@@ -3,7 +3,7 @@ app/core/guardrails.py
 Groundedness verification and context guardrails for hallucination prevention.
 """
 
-from typing import List, Tuple
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -16,7 +16,7 @@ class GroundednessGuardrail:
     def __init__(self, min_confidence: float = 0.25):
         self.min_confidence = min_confidence
 
-    def evaluate_groundedness(self, query: str, chunks: List[RetrievedChunk]) -> Tuple[bool, float, str]:
+    def evaluate_groundedness(self, query: str, chunks: list[RetrievedChunk]) -> tuple[bool, float, str]:
         if not chunks:
             return False, 0.0, "Zero context chunks retrieved: Query rejected to prevent hallucination."
 

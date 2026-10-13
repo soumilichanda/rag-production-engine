@@ -1,6 +1,5 @@
-import pytest
-from app.schemas.payloads import RetrievedChunk
 from app.retrieval.hybrid_search import HybridRRFSearcher
+from app.schemas.payloads import RetrievedChunk
 
 
 def test_rrf_scoring_and_tie_breaking():

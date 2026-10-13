@@ -2,18 +2,19 @@
 Strict Pydantic V2 data contracts for document ingestion and retrieval queries.
 """
 
-from typing import Any, Dict, List
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class DocumentChunk(BaseModel):
     chunk_id: str = Field(..., description="Deterministic unique identifier for the chunk")
     text: str = Field(..., min_length=5, description="Raw chunk text payload")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata dictionary")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata dictionary")
 
 
 class IngestionRequest(BaseModel):
-    documents: List[DocumentChunk] = Field(..., min_length=1, description="List of document chunks to index")
+    documents: list[DocumentChunk] = Field(..., min_length=1, description="List of document chunks to index")
 
 
 class IngestionResponse(BaseModel):
@@ -31,11 +32,11 @@ class RetrievedChunk(BaseModel):
     chunk_id: str
     text: str
     similarity_score: float
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class QueryResponse(BaseModel):
     query: str
-    results: List[RetrievedChunk]
+    results: list[RetrievedChunk]
     retrieved_count: int
     latency_ms: float

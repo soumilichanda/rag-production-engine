@@ -1,7 +1,7 @@
 ﻿import numpy as np
-import pytest
-from app.schemas.payloads import DocumentChunk
+
 from app.retrieval.vector_store import InMemoryVectorStore
+from app.schemas.payloads import DocumentChunk
 
 
 def test_vector_store_cosine_ranking():

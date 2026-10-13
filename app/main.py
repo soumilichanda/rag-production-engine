@@ -4,12 +4,19 @@ FastAPI gateway for chunk indexing, vector retrieval, and reranking.
 """
 
 import time
+
 import numpy as np
 from fastapi import FastAPI, HTTPException, status
-from app.schemas.payloads import IngestionRequest, IngestionResponse, QueryRequest, QueryResponse, RetrievedChunk
-from app.retrieval.vector_store import InMemoryVectorStore
-from app.core.reranker import ExactTokenOverlapReranker
+
 from app.core.guardrails import GroundednessGuardrail
+from app.core.reranker import ExactTokenOverlapReranker
+from app.retrieval.vector_store import InMemoryVectorStore
+from app.schemas.payloads import (
+    IngestionRequest,
+    IngestionResponse,
+    QueryRequest,
+    QueryResponse,
+)
 
 app = FastAPI(
     title="Production RAG Engine",
@@ -58,7 +65,7 @@ async def retrieve_context(payload: QueryRequest):
     ranked = reranker.rerank(payload.query, candidates, top_k=payload.top_k)
 
     # 3. Groundedness guardrail check
-    is_grounded, top_score, reason = guardrail.evaluate_groundedness(payload.query, ranked)
+    is_grounded, _top_score, reason = guardrail.evaluate_groundedness(payload.query, ranked)
     if not is_grounded:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

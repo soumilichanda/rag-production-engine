@@ -3,8 +3,8 @@ app/core/reranker.py
 Semantic Cross-Encoder scoring and context reranking harness.
 """
 
-from typing import List
-import numpy as np
+
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -17,7 +17,7 @@ class ExactTokenOverlapReranker:
     def __init__(self, token_weight: float = 0.35):
         self.token_weight = token_weight
 
-    def rerank(self, query: str, candidates: List[RetrievedChunk], top_k: int) -> List[RetrievedChunk]:
+    def rerank(self, query: str, candidates: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
         if not candidates:
             return []
 

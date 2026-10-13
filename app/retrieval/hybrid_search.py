@@ -3,7 +3,7 @@ app/retrieval/hybrid_search.py
 Reciprocal Rank Fusion (RRF) combining dense vector similarity with sparse token matches.
 """
 
-from typing import List, Dict
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -18,15 +18,15 @@ class HybridRRFSearcher:
 
     def fuse(
         self,
-        dense_results: List[RetrievedChunk],
+        dense_results: list[RetrievedChunk],
         sparse_query: str,
         top_k: int = 5
-    ) -> List[RetrievedChunk]:
+    ) -> list[RetrievedChunk]:
         if not dense_results:
             return []
 
-        scores: Dict[str, float] = {}
-        chunk_map: Dict[str, RetrievedChunk] = {}
+        scores: dict[str, float] = {}
+        chunk_map: dict[str, RetrievedChunk] = {}
 
         # 1. Dense reciprocal rank contribution
         for rank, chunk in enumerate(dense_results):
@@ -47,7 +47,7 @@ class HybridRRFSearcher:
         # 3. Sort by fused RRF score
         fused_ids = sorted(scores.keys(), key=lambda cid: scores[cid], reverse=True)
 
-        fused_results: List[RetrievedChunk] = []
+        fused_results: list[RetrievedChunk] = []
         for cid in fused_ids[:top_k]:
             original = chunk_map[cid]
             fused_score = round(scores[cid], 5)
