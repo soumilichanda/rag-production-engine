@@ -1,38 +1,43 @@
-﻿"""
+"""
 app/main.py
-FastAPI gateway for chunk indexing, vector retrieval, and reranking.
+FastAPI gateway with lifespan cold-start index hydration and disk persistence.
 """
 
+from contextlib import asynccontextmanager
 import time
-
 import numpy as np
 from fastapi import FastAPI, HTTPException, status
-
-from app.core.guardrails import GroundednessGuardrail
-from app.core.reranker import ExactTokenOverlapReranker
+from app.schemas.payloads import IngestionRequest, IngestionResponse, QueryRequest, QueryResponse
 from app.retrieval.vector_store import InMemoryVectorStore
-from app.schemas.payloads import (
-    IngestionRequest,
-    IngestionResponse,
-    QueryRequest,
-    QueryResponse,
-)
+from app.retrieval.persistence import IndexPersistenceManager
+from app.core.reranker import ExactTokenOverlapReranker
+from app.core.guardrails import GroundednessGuardrail
 
-app = FastAPI(
-    title="Production RAG Engine",
-    description="Vector retrieval microservice with semantic reranking and hallucination guardrails",
-    version="1.0.0"
-)
-
-# Shared in-memory engine instances
 DIMENSION = 8
 store = InMemoryVectorStore(dimension=DIMENSION)
+persistence_manager = IndexPersistenceManager(storage_dir="data/index")
 reranker = ExactTokenOverlapReranker()
 guardrail = GroundednessGuardrail(min_confidence=0.20)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Hydrate vector store from disk
+    loaded_count = persistence_manager.load(store)
+    yield
+    # Shutdown: Persist updated index state
+    persistence_manager.save(store)
+
+
+app = FastAPI(
+    title="Production RAG Engine",
+    description="Vector retrieval microservice with persistent indexing and reranking",
+    version="1.1.0",
+    lifespan=lifespan,
+)
+
+
 def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
-    """Deterministic hash-based embedding generator for reproducible retrieval tests."""
     vec = np.zeros(dim, dtype=np.float32)
     for i, char in enumerate(text.encode("utf-8")):
         vec[i % dim] += float(char)
@@ -50,6 +55,7 @@ async def index_documents(payload: IngestionRequest):
     embeddings_list = [dummy_text_to_embedding(doc.text) for doc in payload.documents]
     embeddings_matrix = np.vstack(embeddings_list)
     count = store.add_documents(payload.documents, embeddings_matrix)
+    persistence_manager.save(store)
     return IngestionResponse(ingested_count=count, status="success")
 
 
@@ -58,18 +64,14 @@ async def retrieve_context(payload: QueryRequest):
     start = time.perf_counter()
     query_vec = dummy_text_to_embedding(payload.query)
 
-    # 1. Bi-Encoder candidate retrieval
     candidates, _ = store.query(query_vec, top_k=payload.top_k * 2, threshold=payload.score_threshold)
-
-    # 2. Semantic reranking
     ranked = reranker.rerank(payload.query, candidates, top_k=payload.top_k)
 
-    # 3. Groundedness guardrail check
     is_grounded, _top_score, reason = guardrail.evaluate_groundedness(payload.query, ranked)
     if not is_grounded:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": "Query unanswerable with grounded context", "reason": reason}
+            detail={"message": "Query unanswerable with grounded context", "reason": reason},
         )
 
     latency_ms = (time.perf_counter() - start) * 1000.0
@@ -77,5 +79,5 @@ async def retrieve_context(payload: QueryRequest):
         query=payload.query,
         results=ranked,
         retrieved_count=len(ranked),
-        latency_ms=round(latency_ms, 2)
+        latency_ms=round(latency_ms, 2),
     )
