@@ -6,7 +6,8 @@ and SHA-256 chunk hash generation for drift detection.
 
 import hashlib
 import re
-from typing import List, Dict, Any
+from typing import Any, ClassVar
+
 from app.schemas.payloads import DocumentChunk
 
 
@@ -16,7 +17,7 @@ class RecursiveTokenChunker:
     while enforcing bounded chunk character sizes and sliding overlap windows.
     """
 
-    SEPARATORS = ["\n\n", "\n", ". ", "? ", "! ", " ", ""]
+    SEPARATORS: ClassVar[list[str]] = ["\n\n", "\n", ". ", "? ", "! ", " ", ""]
 
     def __init__(self, chunk_size: int = 200, chunk_overlap: int = 40):
         if chunk_overlap >= chunk_size:
@@ -29,7 +30,7 @@ class RecursiveTokenChunker:
         """Generates a deterministic 16-character hexadecimal chunk hash."""
         return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()[:16]
 
-    def _split_text(self, text: str, separators: List[str]) -> List[str]:
+    def _split_text(self, text: str, separators: list[str]) -> list[str]:
         if not separators:
             return list(text)
 
@@ -40,7 +41,7 @@ class RecursiveTokenChunker:
             return list(text)
 
         splits = text.split(sep)
-        result: List[str] = []
+        result: list[str] = []
 
         for piece in splits:
             if not piece:
@@ -52,7 +53,9 @@ class RecursiveTokenChunker:
 
         return result
 
-    def split_text(self, text: str, base_metadata: Dict[str, Any] = None) -> List[DocumentChunk]:
+    def split_text(
+        self, text: str, base_metadata: dict[str, Any] | None = None
+    ) -> list[DocumentChunk]:
         """
         Splits raw text into bounded DocumentChunks with sliding overlap windows
         and deterministic hash identifiers.
@@ -66,22 +69,28 @@ class RecursiveTokenChunker:
 
         raw_pieces = self._split_text(normalized, self.SEPARATORS)
 
-        chunks: List[DocumentChunk] = []
-        current_chunk_tokens: List[str] = []
+        chunks: list[DocumentChunk] = []
+        current_chunk_tokens: list[str] = []
         current_length = 0
 
         for piece in raw_pieces:
             piece_len = len(piece) + 1  # Accounting for separator space
             if current_length + piece_len > self.chunk_size and current_chunk_tokens:
-                # Merge tokens into a passage
                 chunk_str = " ".join(current_chunk_tokens).strip()
                 if len(chunk_str) >= 5:
                     chunk_hash = f"chk_{self.compute_sha256(chunk_str)}"
-                    meta = {**base_metadata, "char_len": len(chunk_str), "hash": chunk_hash}
-                    chunks.append(DocumentChunk(chunk_id=chunk_hash, text=chunk_str, metadata=meta))
+                    meta = {
+                        **base_metadata,
+                        "char_len": len(chunk_str),
+                        "hash": chunk_hash,
+                    }
+                    chunks.append(
+                        DocumentChunk(
+                            chunk_id=chunk_hash, text=chunk_str, metadata=meta
+                        )
+                    )
 
-                # Slide window back by overlap bound
-                overlap_tokens: List[str] = []
+                overlap_tokens: list[str] = []
                 overlap_length = 0
                 for token in reversed(current_chunk_tokens):
                     if overlap_length + len(token) <= self.chunk_overlap:
@@ -95,12 +104,13 @@ class RecursiveTokenChunker:
             current_chunk_tokens.append(piece)
             current_length += piece_len
 
-        # Flush remaining buffer
         if current_chunk_tokens:
             final_str = " ".join(current_chunk_tokens).strip()
             if len(final_str) >= 5:
                 chunk_hash = f"chk_{self.compute_sha256(final_str)}"
                 meta = {**base_metadata, "char_len": len(final_str), "hash": chunk_hash}
-                chunks.append(DocumentChunk(chunk_id=chunk_hash, text=final_str, metadata=meta))
+                chunks.append(
+                    DocumentChunk(chunk_id=chunk_hash, text=final_str, metadata=meta)
+                )
 
         return chunks
