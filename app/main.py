@@ -3,15 +3,22 @@ app/main.py
 FastAPI gateway with lifespan cold-start index hydration and disk persistence.
 """
 
-from contextlib import asynccontextmanager
 import time
+from contextlib import asynccontextmanager
+
 import numpy as np
 from fastapi import FastAPI, HTTPException, status
-from app.schemas.payloads import IngestionRequest, IngestionResponse, QueryRequest, QueryResponse
-from app.retrieval.vector_store import InMemoryVectorStore
-from app.retrieval.persistence import IndexPersistenceManager
-from app.core.reranker import ExactTokenOverlapReranker
+
 from app.core.guardrails import GroundednessGuardrail
+from app.core.reranker import ExactTokenOverlapReranker
+from app.retrieval.persistence import IndexPersistenceManager
+from app.retrieval.vector_store import InMemoryVectorStore
+from app.schemas.payloads import (
+    IngestionRequest,
+    IngestionResponse,
+    QueryRequest,
+    QueryResponse,
+)
 
 DIMENSION = 8
 store = InMemoryVectorStore(dimension=DIMENSION)
@@ -23,7 +30,7 @@ guardrail = GroundednessGuardrail(min_confidence=0.20)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Hydrate vector store from disk
-    loaded_count = persistence_manager.load(store)
+    persistence_manager.load(store)
     yield
     # Shutdown: Persist updated index state
     persistence_manager.save(store)
@@ -50,7 +57,12 @@ async def health_check():
     return {"status": "healthy", "indexed_documents": len(store.chunks)}
 
 
-@app.post("/v1/index", response_model=IngestionResponse, status_code=status.HTTP_201_CREATED, tags=["Ingestion"])
+@app.post(
+    "/v1/index",
+    response_model=IngestionResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Ingestion"],
+)
 async def index_documents(payload: IngestionRequest):
     embeddings_list = [dummy_text_to_embedding(doc.text) for doc in payload.documents]
     embeddings_matrix = np.vstack(embeddings_list)
@@ -64,14 +76,21 @@ async def retrieve_context(payload: QueryRequest):
     start = time.perf_counter()
     query_vec = dummy_text_to_embedding(payload.query)
 
-    candidates, _ = store.query(query_vec, top_k=payload.top_k * 2, threshold=payload.score_threshold)
+    candidates, _ = store.query(
+        query_vec, top_k=payload.top_k * 2, threshold=payload.score_threshold
+    )
     ranked = reranker.rerank(payload.query, candidates, top_k=payload.top_k)
 
-    is_grounded, _top_score, reason = guardrail.evaluate_groundedness(payload.query, ranked)
+    is_grounded, _top_score, reason = guardrail.evaluate_groundedness(
+        payload.query, ranked
+    )
     if not is_grounded:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": "Query unanswerable with grounded context", "reason": reason},
+            detail={
+                "message": "Query unanswerable with grounded context",
+                "reason": reason,
+            },
         )
 
     latency_ms = (time.perf_counter() - start) * 1000.0
