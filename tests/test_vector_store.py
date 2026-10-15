@@ -1,4 +1,4 @@
-﻿import numpy as np
+import numpy as np
 
 from app.retrieval.vector_store import InMemoryVectorStore
 from app.schemas.payloads import DocumentChunk
@@ -9,16 +9,31 @@ def test_vector_store_cosine_ranking():
     store = InMemoryVectorStore(dimension=dim)
 
     docs = [
-        DocumentChunk(chunk_id="chunk_ml", text="FastAPI inference microservice deployment", metadata={"domain": "mlops"}),
-        DocumentChunk(chunk_id="chunk_dsa", text="Topological sort Kahn algorithm implementation", metadata={"domain": "dsa"}),
-        DocumentChunk(chunk_id="chunk_net", text="Low-latency WebSockets client server", metadata={"domain": "systems"}),
+        DocumentChunk(
+            chunk_id="chunk_ml",
+            text="FastAPI inference microservice deployment",
+            metadata={"domain": "mlops"},
+        ),
+        DocumentChunk(
+            chunk_id="chunk_dsa",
+            text="Topological sort Kahn algorithm implementation",
+            metadata={"domain": "dsa"},
+        ),
+        DocumentChunk(
+            chunk_id="chunk_net",
+            text="Low-latency WebSockets client server",
+            metadata={"domain": "systems"},
+        ),
     ]
 
-    embeddings = np.array([
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-    ], dtype=np.float32)
+    embeddings = np.array(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
 
     store.add_documents(docs, embeddings)
 

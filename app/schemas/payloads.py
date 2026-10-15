@@ -1,4 +1,4 @@
-﻿"""
+"""
 Strict Pydantic V2 data contracts for document ingestion and retrieval queries.
 """
 
@@ -8,13 +8,19 @@ from pydantic import BaseModel, Field
 
 
 class DocumentChunk(BaseModel):
-    chunk_id: str = Field(..., description="Deterministic unique identifier for the chunk")
+    chunk_id: str = Field(
+        ..., description="Deterministic unique identifier for the chunk"
+    )
     text: str = Field(..., min_length=5, description="Raw chunk text payload")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata dictionary")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Arbitrary metadata dictionary"
+    )
 
 
 class IngestionRequest(BaseModel):
-    documents: list[DocumentChunk] = Field(..., min_length=1, description="List of document chunks to index")
+    documents: list[DocumentChunk] = Field(
+        ..., min_length=1, description="List of document chunks to index"
+    )
 
 
 class IngestionResponse(BaseModel):
@@ -24,8 +30,12 @@ class IngestionResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=2, description="Natural language search query")
-    top_k: int = Field(default=3, ge=1, le=20, description="Maximum number of chunks to retrieve")
-    score_threshold: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum cosine similarity cutoff")
+    top_k: int = Field(
+        default=3, ge=1, le=20, description="Maximum number of chunks to retrieve"
+    )
+    score_threshold: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Minimum cosine similarity cutoff"
+    )
 
 
 class RetrievedChunk(BaseModel):

@@ -5,8 +5,14 @@ from app.schemas.payloads import RetrievedChunk
 def test_rrf_scoring_and_tie_breaking():
     searcher = HybridRRFSearcher(rrf_k=60)
     dense_candidates = [
-        RetrievedChunk(chunk_id="doc_a", text="Python async microservices", similarity_score=0.91),
-        RetrievedChunk(chunk_id="doc_b", text="Kubernetes cluster orchestration", similarity_score=0.88),
+        RetrievedChunk(
+            chunk_id="doc_a", text="Python async microservices", similarity_score=0.91
+        ),
+        RetrievedChunk(
+            chunk_id="doc_b",
+            text="Kubernetes cluster orchestration",
+            similarity_score=0.88,
+        ),
     ]
 
     # Query heavily matching doc_b lexically

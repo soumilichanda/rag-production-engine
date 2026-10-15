@@ -1,9 +1,7 @@
-﻿"""
+"""
 app/core/reranker.py
 Semantic Cross-Encoder scoring and context reranking harness.
 """
-
-
 
 from app.schemas.payloads import RetrievedChunk
 
@@ -17,7 +15,9 @@ class ExactTokenOverlapReranker:
     def __init__(self, token_weight: float = 0.35):
         self.token_weight = token_weight
 
-    def rerank(self, query: str, candidates: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
+    def rerank(
+        self, query: str, candidates: list[RetrievedChunk], top_k: int
+    ) -> list[RetrievedChunk]:
         if not candidates:
             return []
 
@@ -32,14 +32,20 @@ class ExactTokenOverlapReranker:
                 overlap_ratio = len(query_tokens & chunk_tokens) / len(query_tokens)
 
             # Combined score: Base vector similarity + token lexical alignment
-            composite_score = float((1.0 - self.token_weight) * chunk.similarity_score + self.token_weight * overlap_ratio)
+            composite_score = float(
+                (1.0 - self.token_weight) * chunk.similarity_score
+                + self.token_weight * overlap_ratio
+            )
 
             reranked.append(
                 RetrievedChunk(
                     chunk_id=chunk.chunk_id,
                     text=chunk.text,
                     similarity_score=round(composite_score, 4),
-                    metadata={**chunk.metadata, "lexical_overlap": round(overlap_ratio, 3)}
+                    metadata={
+                        **chunk.metadata,
+                        "lexical_overlap": round(overlap_ratio, 3),
+                    },
                 )
             )
 

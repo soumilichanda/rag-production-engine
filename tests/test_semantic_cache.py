@@ -1,5 +1,5 @@
-﻿import numpy as np
-import pytest
+import numpy as np
+
 from app.core.semantic_cache import SemanticCache
 
 

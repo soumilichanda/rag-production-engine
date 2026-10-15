@@ -1,10 +1,11 @@
-﻿"""
+"""
 app/core/semantic_cache.py
 Semantic vector caching engine based on cosine distance cutoffs.
 """
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
 import numpy as np
 
 
@@ -14,12 +15,14 @@ class SemanticCache:
     Cache hit is triggered when cosine distance <= distance_threshold.
     """
 
-    def __init__(self, dimension: int = 8, distance_threshold: float = 0.08, capacity: int = 500):
+    def __init__(
+        self, dimension: int = 8, distance_threshold: float = 0.08, capacity: int = 500
+    ):
         self.dimension = dimension
         self.distance_threshold = distance_threshold
         self.capacity = capacity
-        self.query_vectors: List[np.ndarray] = []
-        self.cached_payloads: List[Dict[str, Any]] = []
+        self.query_vectors: list[np.ndarray] = []
+        self.cached_payloads: list[dict[str, Any]] = []
         self.hits = 0
         self.misses = 0
 
@@ -31,7 +34,7 @@ class SemanticCache:
         similarity = dot / norm_product
         return max(0.0, 1.0 - similarity)
 
-    def lookup(self, query_vector: np.ndarray) -> Tuple[Optional[Dict[str, Any]], float]:
+    def lookup(self, query_vector: np.ndarray) -> tuple[dict[str, Any] | None, float]:
         start = time.perf_counter()
         if not self.query_vectors:
             self.misses += 1
@@ -59,7 +62,9 @@ class SemanticCache:
         self.misses += 1
         return None, lookup_latency
 
-    def insert(self, query_vector: np.ndarray, response_payload: Dict[str, Any]) -> None:
+    def insert(
+        self, query_vector: np.ndarray, response_payload: dict[str, Any]
+    ) -> None:
         if len(self.query_vectors) >= self.capacity:
             # Evict oldest entry (FIFO)
             self.query_vectors.pop(0)
@@ -69,7 +74,7 @@ class SemanticCache:
         self.query_vectors.append(q_norm)
         self.cached_payloads.append(response_payload)
 
-    def get_telemetry(self) -> Dict[str, Any]:
+    def get_telemetry(self) -> dict[str, Any]:
         total = self.hits + self.misses
         hit_rate = (self.hits / total) if total > 0 else 0.0
         return {

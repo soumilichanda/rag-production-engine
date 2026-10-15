@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
@@ -20,8 +20,16 @@ async def test_indexing_and_retrieval_flow():
         # 1. Ingest test documents
         ingest_payload = {
             "documents": [
-                {"chunk_id": "c1", "text": "Continuous deployment workflows on Kubernetes cluster", "metadata": {"env": "prod"}},
-                {"chunk_id": "c2", "text": "Asynchronous microservice concurrency with FastAPI and Redis", "metadata": {"env": "staging"}},
+                {
+                    "chunk_id": "c1",
+                    "text": "Continuous deployment workflows on Kubernetes cluster",
+                    "metadata": {"env": "prod"},
+                },
+                {
+                    "chunk_id": "c2",
+                    "text": "Asynchronous microservice concurrency with FastAPI and Redis",
+                    "metadata": {"env": "staging"},
+                },
             ]
         }
         res_index = await client.post("/v1/index", json=ingest_payload)
@@ -32,7 +40,7 @@ async def test_indexing_and_retrieval_flow():
         query_payload = {
             "query": "Kubernetes continuous deployment",
             "top_k": 2,
-            "score_threshold": 0.0
+            "score_threshold": 0.0,
         }
         res_query = await client.post("/v1/retrieve", json=query_payload)
         assert res_query.status_code == 200

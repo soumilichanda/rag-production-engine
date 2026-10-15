@@ -1,4 +1,4 @@
-﻿"""
+"""
 Vector store retrieval engine using L2-normalized cosine similarity.
 """
 
@@ -15,7 +15,9 @@ class InMemoryVectorStore:
         self.chunks: list[DocumentChunk] = []
         self.embeddings: np.ndarray = np.empty((0, dimension), dtype=np.float32)
 
-    def add_documents(self, documents: list[DocumentChunk], embeddings: np.ndarray) -> int:
+    def add_documents(
+        self, documents: list[DocumentChunk], embeddings: np.ndarray
+    ) -> int:
         if len(documents) != len(embeddings):
             raise ValueError("Document count must match embedding matrix rows")
 
@@ -28,11 +30,15 @@ class InMemoryVectorStore:
         if self.embeddings.shape[0] == 0:
             self.embeddings = normalized_embeddings.astype(np.float32)
         else:
-            self.embeddings = np.vstack([self.embeddings, normalized_embeddings]).astype(np.float32)
+            self.embeddings = np.vstack(
+                [self.embeddings, normalized_embeddings]
+            ).astype(np.float32)
 
         return len(documents)
 
-    def query(self, query_embedding: np.ndarray, top_k: int = 3, threshold: float = 0.0) -> tuple[list[RetrievedChunk], float]:
+    def query(
+        self, query_embedding: np.ndarray, top_k: int = 3, threshold: float = 0.0
+    ) -> tuple[list[RetrievedChunk], float]:
         start_time = time.perf_counter()
 
         if self.embeddings.shape[0] == 0:
