@@ -1,47 +1,28 @@
-"""
+﻿"""
 app/main.py
-FastAPI gateway with lifespan cold-start index hydration and disk persistence.
+FastAPI gateway with semantic caching and telemetry profiling endpoints.
 """
 
 import time
-from contextlib import asynccontextmanager
-
 import numpy as np
 from fastapi import FastAPI, HTTPException, status
-
-from app.core.guardrails import GroundednessGuardrail
-from app.core.reranker import ExactTokenOverlapReranker
-from app.retrieval.persistence import IndexPersistenceManager
+from app.schemas.payloads import IngestionRequest, IngestionResponse, QueryRequest, QueryResponse
 from app.retrieval.vector_store import InMemoryVectorStore
-from app.schemas.payloads import (
-    IngestionRequest,
-    IngestionResponse,
-    QueryRequest,
-    QueryResponse,
+from app.core.reranker import ExactTokenOverlapReranker
+from app.core.guardrails import GroundednessGuardrail
+from app.core.semantic_cache import SemanticCache
+
+app = FastAPI(
+    title="Production RAG Engine",
+    description="Vector retrieval microservice with semantic caching and latency telemetry profiling",
+    version="1.2.0"
 )
 
 DIMENSION = 8
 store = InMemoryVectorStore(dimension=DIMENSION)
-persistence_manager = IndexPersistenceManager(storage_dir="data/index")
 reranker = ExactTokenOverlapReranker()
 guardrail = GroundednessGuardrail(min_confidence=0.20)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Hydrate vector store from disk
-    persistence_manager.load(store)
-    yield
-    # Shutdown: Persist updated index state
-    persistence_manager.save(store)
-
-
-app = FastAPI(
-    title="Production RAG Engine",
-    description="Vector retrieval microservice with persistent indexing and reranking",
-    version="1.1.0",
-    lifespan=lifespan,
-)
+semantic_cache = SemanticCache(dimension=DIMENSION, distance_threshold=0.08)
 
 
 def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
@@ -54,20 +35,23 @@ def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "healthy", "indexed_documents": len(store.chunks)}
+    return {
+        "status": "healthy",
+        "indexed_documents": len(store.documents),
+        "telemetry": semantic_cache.get_telemetry()
+    }
 
 
-@app.post(
-    "/v1/index",
-    response_model=IngestionResponse,
-    status_code=status.HTTP_201_CREATED,
-    tags=["Ingestion"],
-)
+@app.get("/v1/telemetry", tags=["Telemetry"])
+async def telemetry_stats():
+    return semantic_cache.get_telemetry()
+
+
+@app.post("/v1/index", response_model=IngestionResponse, status_code=status.HTTP_201_CREATED, tags=["Ingestion"])
 async def index_documents(payload: IngestionRequest):
     embeddings_list = [dummy_text_to_embedding(doc.text) for doc in payload.documents]
     embeddings_matrix = np.vstack(embeddings_list)
     count = store.add_documents(payload.documents, embeddings_matrix)
-    persistence_manager.save(store)
     return IngestionResponse(ingested_count=count, status="success")
 
 
@@ -76,27 +60,38 @@ async def retrieve_context(payload: QueryRequest):
     start = time.perf_counter()
     query_vec = dummy_text_to_embedding(payload.query)
 
-    candidates, _ = store.query(
-        query_vec, top_k=payload.top_k * 2, threshold=payload.score_threshold
-    )
+    # 1. Semantic Cache Interception
+    cached_hit, cache_lookup_ms = semantic_cache.lookup(query_vec)
+    if cached_hit:
+        return QueryResponse(
+            query=payload.query,
+            results=cached_hit["results"],
+            retrieved_count=len(cached_hit["results"]),
+            latency_ms=round((time.perf_counter() - start) * 1000.0, 2)
+        )
+
+    # 2. Vector Candidate Search
+    candidates, _ = store.query(query_vec, top_k=payload.top_k * 2, threshold=payload.score_threshold)
+
+    # 3. Reranking
     ranked = reranker.rerank(payload.query, candidates, top_k=payload.top_k)
 
-    is_grounded, _top_score, reason = guardrail.evaluate_groundedness(
-        payload.query, ranked
-    )
+    # 4. Guardrail Evaluation
+    is_grounded, _, reason = guardrail.evaluate_groundedness(payload.query, ranked)
     if not is_grounded:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "message": "Query unanswerable with grounded context",
-                "reason": reason,
-            },
+            detail={"message": "Query unanswerable with grounded context", "reason": reason}
         )
 
-    latency_ms = (time.perf_counter() - start) * 1000.0
-    return QueryResponse(
+    total_latency_ms = round((time.perf_counter() - start) * 1000.0, 2)
+    response = QueryResponse(
         query=payload.query,
         results=ranked,
         retrieved_count=len(ranked),
-        latency_ms=round(latency_ms, 2),
+        latency_ms=total_latency_ms
     )
+
+    # Populate cache
+    semantic_cache.insert(query_vec, {"results": ranked})
+    return response
