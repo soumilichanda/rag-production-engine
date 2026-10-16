@@ -24,7 +24,7 @@ async def worker(queue: asyncio.Queue, latencies: list, client: httpx.AsyncClien
             if resp.status_code == 200:
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
                 latencies.append(elapsed_ms)
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError):
             pass
         finally:
             queue.task_done()
@@ -36,7 +36,7 @@ async def run_benchmark():
         await queue.put({
             "query": f"benchmark retrieval query {i % 10}",
             "top_k": 3,
-            "score_threshold": 0.0
+            "score_threshold": 0.0,
         })
 
     latencies = []
