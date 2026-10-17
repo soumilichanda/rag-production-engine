@@ -75,25 +75,28 @@ pytest -v tests/
 
 
 ---
+```
 
 ## 🚀 Phase 7: Containerization & Gateway Profiling
 
 ### Production Container Build & Execution
-\\ash
+```bash
 # Build multi-stage slim container
 docker build -t rag-production-engine:latest .
 
 # Run container with non-root privileges & health probe
 docker run -d -p 8000:8000 --name rag-service rag-production-engine:latest
-\
-### High-Concurrency Gateway Stress Test
-\\ash
-python benchmarks/load_test.py
-\- Benchmarks endpoint saturation, async worker throughput, and p50/p95/p99 tail latency.
-- Validates semantic cache stability under burst retrieval traffic.
-
 ---
+```
 
+### High-Concurrency Gateway Stress Test
+```markdown
+
+```bash
+python benchmarks/load_test.py
+
+
+```
 ## 🛠️ Automated CI & Diagnostics Probes
 - **GitHub Actions:** Matrix automated validation across Python 3.10, 3.11, and 3.12.
 - **Diagnostic Probes:** \/v1/diagnostics/health\ and \/v1/diagnostics/telemetry\ for container orchestrator readiness.
