@@ -91,3 +91,9 @@ docker run -d -p 8000:8000 --name rag-service rag-production-engine:latest
 python benchmarks/load_test.py
 \- Benchmarks endpoint saturation, async worker throughput, and p50/p95/p99 tail latency.
 - Validates semantic cache stability under burst retrieval traffic.
+
+---
+
+## 🛠️ Automated CI & Diagnostics Probes
+- **GitHub Actions:** Matrix automated validation across Python 3.10, 3.11, and 3.12.
+- **Diagnostic Probes:** \/v1/diagnostics/health\ and \/v1/diagnostics/telemetry\ for container orchestrator readiness.
