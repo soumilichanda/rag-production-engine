@@ -100,3 +100,9 @@ python benchmarks/load_test.py
 ## 🛠️ Automated CI & Diagnostics Probes
 - **GitHub Actions:** Matrix automated validation across Python 3.10, 3.11, and 3.12.
 - **Diagnostic Probes:** \/v1/diagnostics/health\ and \/v1/diagnostics/telemetry\ for container orchestrator readiness.
+
+---
+
+## 📑 API Contracts & Offline Specifications
+- **Offline OpenAPI Spec:** Available under \docs/specs/openapi.json\.
+- **Automated Spec Export:** Run \python scripts/export_openapi.py\ on route updates.
