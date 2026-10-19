@@ -106,3 +106,12 @@ python benchmarks/load_test.py
 ## 📑 API Contracts & Offline Specifications
 - **Offline OpenAPI Spec:** Available under \docs/specs/openapi.json\.
 - **Automated Spec Export:** Run \python scripts/export_openapi.py\ on route updates.
+
+
+---
+
+## 🧠 Phase 10: Grounded Context Synthesis & Citations
+
+- **Unified Gateway Endpoint:** \/v1/generate\ integrates document ingestion, dense vector similarity, and deterministic context synthesis.
+- **Citation Provenance:** Traces citations back to ingested \chunk_id\ instances with guaranteed fallback behavior for empty or ungrounded queries.
+- **Deterministic Pipeline:** Synthesizes structured \GenerationResponse\ models with latency telemetry and retrieved passage attribution.
