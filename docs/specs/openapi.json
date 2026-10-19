@@ -125,6 +125,46 @@
           }
         }
       }
+    },
+    "/v1/diagnostics/health": {
+      "get": {
+        "tags": [
+          "diagnostics"
+        ],
+        "summary": "Health Check",
+        "description": "Liveness probe returning process uptime status.",
+        "operationId": "health_check_v1_diagnostics_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/diagnostics/telemetry": {
+      "get": {
+        "tags": [
+          "diagnostics"
+        ],
+        "summary": "Telemetry Probe",
+        "description": "Readiness probe reporting operational telemetry parameters.",
+        "operationId": "telemetry_probe_v1_diagnostics_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

@@ -1,3 +1,4 @@
+from app.api.diagnostics import router as diagnostics_router
 """
 app/main.py
 FastAPI gateway with semantic caching and telemetry profiling endpoints.
@@ -112,3 +113,5 @@ async def retrieve_context(payload: QueryRequest):
     # Populate cache
     semantic_cache.insert(query_vec, {"results": ranked})
     return response
+
+app.include_router(diagnostics_router)
