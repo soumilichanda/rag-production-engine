@@ -130,3 +130,18 @@ async def generate_response(payload: QueryRequest):
         context=retrieval_res.results,
         latency_ms=retrieval_res.latency_ms
     )
+
+from app.core.synthesizer import GroundedContextSynthesizer, GenerationResponse
+
+synthesizer = GroundedContextSynthesizer()
+
+
+@app.post("/v1/generate", response_model=GenerationResponse, tags=["Generation"])
+async def generate_response(payload: QueryRequest):
+    """Unified end-to-end endpoint: retrieve relevant context chunks and synthesize citation-grounded response."""
+    retrieval_res = await retrieve_context(payload)
+    return synthesizer.synthesize(
+        query=payload.query,
+        context=retrieval_res.results,
+        latency_ms=retrieval_res.latency_ms
+    )
