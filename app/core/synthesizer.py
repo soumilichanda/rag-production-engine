@@ -4,16 +4,15 @@ Context synthesis and citation extraction engine.
 Combines retrieved context chunks into deterministic grounded responses.
 """
 
-
+from typing import List
 from pydantic import BaseModel, Field
-
 from app.schemas.payloads import RetrievedChunk
 
 
 class GenerationResponse(BaseModel):
     query: str
     answer: str
-    citations: list[str] = Field(default_factory=list, description="IDs of cited context chunks")
+    citations: List[str] = Field(default_factory=list, description="IDs of cited context chunks")
     retrieved_count: int = 0
     latency_ms: float = 0.0
 
@@ -24,7 +23,7 @@ class GroundedContextSynthesizer:
     Extracts citation references and guarantees non-hallucinatory fallbacks.
     """
 
-    def synthesize(self, query: str, context: list[RetrievedChunk], latency_ms: float = 0.0) -> GenerationResponse:
+    def synthesize(self, query: str, context: List[RetrievedChunk], latency_ms: float = 0.0) -> GenerationResponse:
         if not context:
             return GenerationResponse(
                 query=query,
