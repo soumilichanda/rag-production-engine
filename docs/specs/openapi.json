@@ -165,6 +165,48 @@
           }
         }
       }
+    },
+    "/v1/generate": {
+      "post": {
+        "tags": [
+          "Generation"
+        ],
+        "summary": "Generate Response",
+        "description": "Unified end-to-end endpoint: retrieve relevant context chunks and synthesize citation-grounded response.",
+        "operationId": "generate_response_v1_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -195,6 +237,42 @@
           "text"
         ],
         "title": "DocumentChunk"
+      },
+      "GenerationResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Citations",
+            "description": "IDs of cited context chunks"
+          },
+          "retrieved_count": {
+            "type": "integer",
+            "title": "Retrieved Count",
+            "default": 0
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "answer"
+        ],
+        "title": "GenerationResponse"
       },
       "HTTPValidationError": {
         "properties": {
