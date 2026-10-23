@@ -115,3 +115,12 @@ python benchmarks/load_test.py
 - **Unified Gateway Endpoint:** \/v1/generate\ integrates document ingestion, dense vector similarity, and deterministic context synthesis.
 - **Citation Provenance:** Traces citations back to ingested \chunk_id\ instances with guaranteed fallback behavior for empty or ungrounded queries.
 - **Deterministic Pipeline:** Synthesizes structured \GenerationResponse\ models with latency telemetry and retrieved passage attribution.
+
+---
+
+## 📊 Phase 11: Production Evaluation & RAG Triad Metrics
+
+- **Context Relevance:** Evaluates query-to-context information density and filters uninformative background noise.
+- **Faithfulness (Groundedness):** Verifies that synthesized claims strictly derive from retrieved context chunks to prevent hallucination.
+- **Answer Relevance:** Validates bidirectional token coverage between original query intent and synthesized responses.
+- **Automated Quality Gates:** Integrated threshold scoring enforcing minimal acceptable metrics before output emission.
