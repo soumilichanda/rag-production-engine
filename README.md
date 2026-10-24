@@ -124,3 +124,12 @@ python benchmarks/load_test.py
 - **Faithfulness (Groundedness):** Verifies that synthesized claims strictly derive from retrieved context chunks to prevent hallucination.
 - **Answer Relevance:** Validates bidirectional token coverage between original query intent and synthesized responses.
 - **Automated Quality Gates:** Integrated threshold scoring enforcing minimal acceptable metrics before output emission.
+
+
+---
+
+## 📡 Phase 12: Distributed Observability & OpenTelemetry Instrumentation
+
+- **Trace Propagation:** W3C Trace Context (\	raceparent\) compliant spanning across gateway lifecycles.
+- **Hierarchical Profiling:** Granular microsecond span telemetry for chunk retrieval, cross-encoder rerank, and synthesis.
+- **Resilience Telemetry:** Explicit span error-boundary capture with serialized exception metadata.
