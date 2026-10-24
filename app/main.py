@@ -1,3 +1,4 @@
+from app.core.tracer import PipelineTracer
 from app.api.diagnostics import router as diagnostics_router
 """
 app/main.py
