@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Production RAG Engine",
-    "description": "Vector retrieval microservice with semantic caching and latency telemetry profiling (Phase 12: OpenTelemetry Traced)",
+    "description": "Vector retrieval microservice with semantic caching and latency telemetry profiling",
     "version": "1.2.0"
   },
   "paths": {
