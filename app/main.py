@@ -9,6 +9,7 @@ import time
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, status
+from app.core.rate_limiter import RateLimitMiddleware
 
 from app.core.guardrails import GroundednessGuardrail
 from app.core.reranker import ExactTokenOverlapReranker
@@ -26,6 +27,8 @@ app = FastAPI(
     description="Vector retrieval microservice with semantic caching and latency telemetry profiling",
     version="1.2.0",
 )
+
+app.add_middleware(RateLimitMiddleware, limit=30, window_seconds=60)
 
 DIMENSION = 8
 store = InMemoryVectorStore(dimension=DIMENSION)
