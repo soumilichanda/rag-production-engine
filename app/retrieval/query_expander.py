@@ -4,8 +4,7 @@ Generates diverse query perspectives and gathers sub-query vector candidate chun
 """
 
 import asyncio
-from typing import List
-from app.retrieval.vector_store import VectorStore
+from typing import Any, List
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -15,7 +14,7 @@ class MultiQueryRetriever:
     and executes concurrent asynchronous vector store queries.
     """
 
-    def __init__(self, vector_store: VectorStore):
+    def __init__(self, vector_store: Any):
         self.vector_store = vector_store
 
     def generate_perspectives(self, query: str) -> List[str]:
