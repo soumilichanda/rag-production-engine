@@ -133,3 +133,9 @@ python benchmarks/load_test.py
 - **Trace Propagation:** W3C Trace Context (\	raceparent\) compliant spanning across gateway lifecycles.
 - **Hierarchical Profiling:** Granular microsecond span telemetry for chunk retrieval, cross-encoder rerank, and synthesis.
 - **Resilience Telemetry:** Explicit span error-boundary capture with serialized exception metadata.
+
+
+### Phase 14: Dynamic Query Expansion & Reciprocal Rank Fusion
+- **Perspective Diversification**: Sub-query generator deconstructs prompts into technical and conceptual retrieval variations.
+- **Asynchronous Fan-out**: Queries vector collections concurrently via syncio.gather.
+- **RRF Aggregation**: Combines multi-perspective rankings using reciprocal rank weighting (=60$) to favor persistent consensus.
