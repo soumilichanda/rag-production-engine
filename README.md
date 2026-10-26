@@ -135,6 +135,8 @@ python benchmarks/load_test.py
 - **Resilience Telemetry:** Explicit span error-boundary capture with serialized exception metadata.
 
 
+- [x] **Phase 14**: Dynamic Query Expansion & Reciprocal Rank Fusion (Complete)
+
 ### Phase 14: Dynamic Query Expansion & Reciprocal Rank Fusion
 - **Perspective Diversification**: Sub-query generator deconstructs prompts into technical and conceptual retrieval variations.
 - **Asynchronous Fan-out**: Queries vector collections concurrently via syncio.gather.
