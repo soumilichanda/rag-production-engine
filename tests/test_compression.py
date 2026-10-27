@@ -1,5 +1,5 @@
 ﻿import pytest
-from app/retrieval/context_compressor import CrossEncoderContextCompressor
+from app.retrieval.context_compressor import CrossEncoderContextCompressor
 
 
 def test_compression_trims_length():
