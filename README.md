@@ -134,19 +134,20 @@ python benchmarks/load_test.py
 - **Hierarchical Profiling:** Granular microsecond span telemetry for chunk retrieval, cross-encoder rerank, and synthesis.
 - **Resilience Telemetry:** Explicit span error-boundary capture with serialized exception metadata.
 
+---
 
-- [x] **Phase 14**: Dynamic Query Expansion & Reciprocal Rank Fusion (Complete)
 
-### ## 🛡️ Phase 13: Distributed Rate Limiting & Token Bucket Middleware
+###  🛡️ Phase 13: Distributed Rate Limiting & Token Bucket Middleware
 
 - **Sliding Window Token Bucket:** Protects retrieval, reranking, and generation endpoints with thread-safe timestamp ring buffers.
 - **Client IP Isolation:** Per-client sliding window accounting with dynamic burst capacity and replenishment intervals.
 - **RFC-Compliant Contracts:** Emits standard "9 Too Many Requests\ responses with \X-RateLimit-Limit\, \X-RateLimit-Remaining\, and \Retry-After\ headers.
 - **Specifications & Policies:** Documented in [\docs/RATE_LIMITING.md\](docs/RATE_LIMITING.md) with updated \docs/specs/openapi.json\ error schemas.
 
-Phase 14: Dynamic Query Expansion & Reciprocal Rank Fusion
+---
+### Phase 14: Dynamic Query Expansion & Reciprocal Rank Fusion
 - **Perspective Diversification**: Sub-query generator deconstructs prompts into technical and conceptual retrieval variations.
-- **Asynchronous Fan-out**: Queries vector collections concurrently via syncio.gather.
+- **Asynchronous Fan-out**: Queries vector collections concurrently via asyncio.gather.
 - **RRF Aggregation**: Combines multi-perspective rankings using reciprocal rank weighting (=60$) to favor persistent consensus.
 
 
