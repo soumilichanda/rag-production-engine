@@ -1,9 +1,9 @@
-﻿"""
+"""
 Phase 15: Cross-Encoder Context Compression & Extractive Reranking.
 Extracts high-salience semantic sentences to optimize prompt token budgets.
 """
 
-from typing import List, Dict, Any
+from typing import Any
 
 
 class CrossEncoderContextCompressor:
@@ -35,8 +35,8 @@ class CrossEncoderContextCompressor:
         return ". ".join(selected) + ("." if selected else "")
 
     def compress_candidates(
-        self, query: str, candidates: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, query: str, candidates: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         compressed = []
         for cand in candidates:
             item = dict(cand)

@@ -1,17 +1,28 @@
-﻿import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.core.synthesizer import GroundedContextSynthesizer
+from app.main import app
 from app.schemas.payloads import RetrievedChunk
 
 
 def test_synthesizer_with_citations():
     synthesizer = GroundedContextSynthesizer()
     chunks = [
-        RetrievedChunk(chunk_id="chunk_doc_1", text="Dense vector retrieval indexes semantic meaning.", similarity_score=0.92),
-        RetrievedChunk(chunk_id="chunk_doc_2", text="BM25 matches keyword lexical occurrences.", similarity_score=0.88),
+        RetrievedChunk(
+            chunk_id="chunk_doc_1",
+            text="Dense vector retrieval indexes semantic meaning.",
+            similarity_score=0.92,
+        ),
+        RetrievedChunk(
+            chunk_id="chunk_doc_2",
+            text="BM25 matches keyword lexical occurrences.",
+            similarity_score=0.88,
+        ),
     ]
-    res = synthesizer.synthesize(query="What is dense retrieval?", context=chunks, latency_ms=12.4)
+    res = synthesizer.synthesize(
+        query="What is dense retrieval?", context=chunks, latency_ms=12.4
+    )
     assert res.query == "What is dense retrieval?"
     assert res.citations == ["chunk_doc_1", "chunk_doc_2"]
     assert res.retrieved_count == 2
@@ -37,7 +48,7 @@ async def test_generation_endpoint_with_seeded_document():
                 {
                     "chunk_id": "seed_chunk_1",
                     "text": "Production RAG platforms combine dense semantic indexing with context reranking.",
-                    "metadata": {"source": "manual"}
+                    "metadata": {"source": "manual"},
                 }
             ]
         }
@@ -48,7 +59,7 @@ async def test_generation_endpoint_with_seeded_document():
         gen_payload = {
             "query": "Production RAG platforms indexing",
             "top_k": 1,
-            "score_threshold": 0.0
+            "score_threshold": 0.0,
         }
         gen_res = await client.post("/v1/generate", json=gen_payload)
         assert gen_res.status_code == 200

@@ -1,9 +1,10 @@
-﻿"""
+"""
 app/api/diagnostics.py
 System diagnostics, vector cache telemetry, and Kubernetes liveness probes.
 """
 
 import time
+
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/v1/diagnostics", tags=["diagnostics"])
@@ -16,7 +17,7 @@ async def health_check():
         "status": "healthy",
         "service": "rag-production-engine",
         "timestamp": time.time(),
-        "ready": True
+        "ready": True,
     }
 
 
@@ -27,5 +28,5 @@ async def telemetry_probe():
         "status": "operational",
         "cache_layer": "lru_semantic_bounded",
         "vector_indexing": "normalized_cosine",
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }

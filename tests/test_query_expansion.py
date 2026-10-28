@@ -1,19 +1,36 @@
-﻿import pytest
-from typing import List
-from app.retrieval.query_expander import MultiQueryRetriever
+import pytest
+
 from app.retrieval.fusion import RRFAggregator
+from app.retrieval.query_expander import MultiQueryRetriever
 from app.schemas.payloads import RetrievedChunk
 
 
 class MockVectorStore:
     def __init__(self):
         self.corpus = [
-            RetrievedChunk(chunk_id="c1", text="Kahn algorithm detects cycles in directed graphs.", similarity_score=0.92, metadata={"source": "dsa"}),
-            RetrievedChunk(chunk_id="c2", text="Breadth-first search discovers shortest transformation sequences.", similarity_score=0.88, metadata={"source": "dsa"}),
-            RetrievedChunk(chunk_id="c3", text="FastAPI routes mount asynchronous endpoints for web retrieval.", similarity_score=0.75, metadata={"source": "web"}),
+            RetrievedChunk(
+                chunk_id="c1",
+                text="Kahn algorithm detects cycles in directed graphs.",
+                similarity_score=0.92,
+                metadata={"source": "dsa"},
+            ),
+            RetrievedChunk(
+                chunk_id="c2",
+                text="Breadth-first search discovers shortest transformation sequences.",
+                similarity_score=0.88,
+                metadata={"source": "dsa"},
+            ),
+            RetrievedChunk(
+                chunk_id="c3",
+                text="FastAPI routes mount asynchronous endpoints for web retrieval.",
+                similarity_score=0.75,
+                metadata={"source": "web"},
+            ),
         ]
 
-    def query(self, query: str, top_k: int = 5, score_threshold: float = 0.0) -> List[RetrievedChunk]:
+    def query(
+        self, query: str, top_k: int = 5, score_threshold: float = 0.0
+    ) -> list[RetrievedChunk]:
         return self.corpus[:top_k]
 
 

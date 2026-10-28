@@ -1,4 +1,4 @@
-﻿"""
+"""
 app/core/rate_limiter.py
 Sliding Window Token Bucket Rate Limiter with RFC-compliant headers.
 """
@@ -6,7 +6,7 @@ Sliding Window Token Bucket Rate Limiter with RFC-compliant headers.
 import time
 from collections import defaultdict, deque
 from threading import Lock
-from typing import Dict, Tuple
+
 from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -20,10 +20,10 @@ class SlidingWindowRateLimiter:
     def __init__(self, limit: int = 60, window_seconds: int = 60):
         self.limit = limit
         self.window_seconds = window_seconds
-        self.client_windows: Dict[str, deque] = defaultdict(deque)
+        self.client_windows: dict[str, deque] = defaultdict(deque)
         self.lock = Lock()
 
-    def acquire(self, client_id: str) -> Tuple[bool, int, int]:
+    def acquire(self, client_id: str) -> tuple[bool, int, int]:
         now = time.time()
         boundary = now - self.window_seconds
 
@@ -45,7 +45,9 @@ class SlidingWindowRateLimiter:
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, limit: int = 30, window_seconds: int = 60):
         super().__init__(app)
-        self.limiter = SlidingWindowRateLimiter(limit=limit, window_seconds=window_seconds)
+        self.limiter = SlidingWindowRateLimiter(
+            limit=limit, window_seconds=window_seconds
+        )
 
     async def dispatch(self, request: Request, call_next):
         # Allow internal health checks to bypass rate limits

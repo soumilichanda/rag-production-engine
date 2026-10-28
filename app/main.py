@@ -1,31 +1,30 @@
-﻿"""
+"""
 app/main.py
 FastAPI gateway supporting indexing, retrieval, context compression, and generation.
 """
 
 import time
+
 import numpy as np
-from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, status
 from pydantic import BaseModel, Field
 
+from app.core.reranker import ExactTokenOverlapReranker
+from app.retrieval.context_compressor import CrossEncoderContextCompressor
+from app.retrieval.vector_store import InMemoryVectorStore
 from app.schemas.payloads import (
     IngestionRequest,
     IngestionResponse,
     QueryRequest,
     QueryResponse,
     RetrievedChunk,
-    DocumentChunk,
 )
-from app.retrieval.vector_store import InMemoryVectorStore
-from app.core.reranker import ExactTokenOverlapReranker
-from app.retrieval.context_compressor import CrossEncoderContextCompressor
 
 
 class GenerationResponse(BaseModel):
     query: str
     answer: str
-    citations: List[str] = Field(default_factory=list)
+    citations: list[str] = Field(default_factory=list)
     retrieved_count: int = 0
     latency_ms: float = 0.0
 
@@ -51,12 +50,20 @@ def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "healthy", "indexed_documents": len(getattr(store, "documents", []))}
+    return {
+        "status": "healthy",
+        "indexed_documents": len(getattr(store, "documents", [])),
+    }
 
 
 @app.get("/v1/diagnostics/health", tags=["Diagnostics"])
 async def diagnostics_health():
-    return {"status": "healthy", "service": "rag-production-engine", "timestamp": time.time(), "ready": True}
+    return {
+        "status": "healthy",
+        "service": "rag-production-engine",
+        "timestamp": time.time(),
+        "ready": True,
+    }
 
 
 @app.get("/v1/diagnostics/telemetry", tags=["Diagnostics"])
@@ -69,7 +76,12 @@ async def diagnostics_telemetry():
     }
 
 
-@app.post("/v1/index", response_model=IngestionResponse, status_code=status.HTTP_201_CREATED, tags=["Ingestion"])
+@app.post(
+    "/v1/index",
+    response_model=IngestionResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Ingestion"],
+)
 async def index_documents(payload: IngestionRequest):
     embeddings_list = [dummy_text_to_embedding(doc.text) for doc in payload.documents]
     embeddings_matrix = np.vstack(embeddings_list)
@@ -90,8 +102,9 @@ async def retrieve_context(payload: QueryRequest):
                 chunk_id=d.chunk_id,
                 text=d.text,
                 similarity_score=0.85,
-                metadata=d.metadata
-            ) for d in store.documents[:payload.top_k]
+                metadata=d.metadata,
+            )
+            for d in store.documents[: payload.top_k]
         ]
 
     ranked = reranker.rerank(payload.query, candidates, top_k=payload.top_k)
@@ -138,7 +151,11 @@ async def generate_response(payload: QueryRequest):
     retrieval_res = await retrieve_context(payload)
     citations = [c.chunk_id for c in retrieval_res.results]
     text_snippet = " ".join([c.text for c in retrieval_res.results[:2]])
-    answer = f"Synthesized answer: {text_snippet}" if text_snippet else "No context available."
+    answer = (
+        f"Synthesized answer: {text_snippet}"
+        if text_snippet
+        else "No context available."
+    )
 
     return GenerationResponse(
         query=payload.query,

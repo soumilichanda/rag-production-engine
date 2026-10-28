@@ -1,4 +1,3 @@
-﻿import pytest
 from app.core.evaluator import RAGTriadEvaluator
 
 
@@ -7,7 +6,7 @@ def test_rag_triad_perfect_grounding():
     query = "vector database indexing"
     contexts = [
         "vector database indexing accelerates nearest neighbor search",
-        "indexing strategies optimize high dimensional vectors"
+        "indexing strategies optimize high dimensional vectors",
     ]
     answer = "vector database indexing accelerates nearest neighbor search"
     metrics = evaluator.evaluate_triad(query, contexts, answer)

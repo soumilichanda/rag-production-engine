@@ -1,10 +1,11 @@
-﻿"""
+"""
 app/retrieval/query_expander.py
 Generates diverse query perspectives and gathers sub-query vector candidate chunks.
 """
 
 import asyncio
-from typing import Any, List
+from typing import Any
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -17,7 +18,7 @@ class MultiQueryRetriever:
     def __init__(self, vector_store: Any):
         self.vector_store = vector_store
 
-    def generate_perspectives(self, query: str) -> List[str]:
+    def generate_perspectives(self, query: str) -> list[str]:
         cleaned = query.strip()
         return [
             cleaned,
@@ -27,7 +28,7 @@ class MultiQueryRetriever:
 
     async def retrieve_perspectives(
         self, query: str, top_k: int = 5, score_threshold: float = 0.0
-    ) -> List[List[RetrievedChunk]]:
+    ) -> list[list[RetrievedChunk]]:
         perspectives = self.generate_perspectives(query)
 
         # Query all perspectives concurrently

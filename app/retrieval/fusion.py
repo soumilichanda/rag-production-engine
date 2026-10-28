@@ -1,10 +1,10 @@
-﻿"""
+"""
 app/retrieval/fusion.py
 Reciprocal Rank Fusion (RRF) aggregator for multi-query candidate chunk lists.
 """
 
 from collections import defaultdict
-from typing import Dict, List
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -18,13 +18,13 @@ class RRFAggregator:
         self.k = k
 
     def fuse(
-        self, ranked_lists: List[List[RetrievedChunk]], top_k: int = 5
-    ) -> List[RetrievedChunk]:
+        self, ranked_lists: list[list[RetrievedChunk]], top_k: int = 5
+    ) -> list[RetrievedChunk]:
         if not ranked_lists:
             return []
 
-        rrf_scores: Dict[str, float] = defaultdict(float)
-        chunk_map: Dict[str, RetrievedChunk] = {}
+        rrf_scores: dict[str, float] = defaultdict(float)
+        chunk_map: dict[str, RetrievedChunk] = {}
 
         for ranked_list in ranked_lists:
             for rank, chunk in enumerate(ranked_list, start=1):
@@ -36,7 +36,7 @@ class RRFAggregator:
             chunk_map.keys(), key=lambda cid: rrf_scores[cid], reverse=True
         )
 
-        fused_results: List[RetrievedChunk] = []
+        fused_results: list[RetrievedChunk] = []
         for cid in sorted_chunks[:top_k]:
             original = chunk_map[cid]
             fused_results.append(

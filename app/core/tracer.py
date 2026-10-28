@@ -1,4 +1,4 @@
-﻿"""
+"""
 Production OpenTelemetry Pipeline Tracer & Distributed Context Engine.
 Tracks hierarchical spans across retrieval, reranking, and synthesis.
 """
@@ -6,18 +6,18 @@ Tracks hierarchical spans across retrieval, reranking, and synthesis.
 import time
 import uuid
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class Span:
-    def __init__(self, name: str, parent_id: Optional[str] = None):
+    def __init__(self, name: str, parent_id: str | None = None):
         self.name: str = name
         self.span_id: str = uuid.uuid4().hex[:16]
-        self.parent_id: Optional[str] = parent_id
+        self.parent_id: str | None = parent_id
         self.start_time: float = time.perf_counter()
-        self.end_time: Optional[float] = None
+        self.end_time: float | None = None
         self.duration_ms: float = 0.0
-        self.attributes: Dict[str, Any] = {}
+        self.attributes: dict[str, Any] = {}
         self.status: str = "UNSET"
 
     def set_attribute(self, key: str, value: Any) -> None:
@@ -28,7 +28,7 @@ class Span:
         self.duration_ms = (self.end_time - self.start_time) * 1000.0
         self.status = status
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "span_id": self.span_id,
@@ -43,11 +43,13 @@ class PipelineTracer:
     def __init__(self, service_name: str = "rag-production-engine"):
         self.service_name: str = service_name
         self.trace_id: str = uuid.uuid4().hex
-        self.spans: List[Span] = []
-        self._current_span: Optional[Span] = None
+        self.spans: list[Span] = []
+        self._current_span: Span | None = None
 
     @contextmanager
-    def start_as_current_span(self, name: str, attributes: Optional[Dict[str, Any]] = None):
+    def start_as_current_span(
+        self, name: str, attributes: dict[str, Any] | None = None
+    ):
         parent_id = self._current_span.span_id if self._current_span else None
         span = Span(name=name, parent_id=parent_id)
         if attributes:
@@ -74,7 +76,7 @@ class PipelineTracer:
         root_span_id = self.spans[0].span_id if self.spans else uuid.uuid4().hex[:16]
         return f"00-{self.trace_id}-{root_span_id}-{sampled}"
 
-    def export_trace_summary(self) -> Dict[str, Any]:
+    def export_trace_summary(self) -> dict[str, Any]:
         total_duration = sum(s.duration_ms for s in self.spans if s.parent_id is None)
         return {
             "service_name": self.service_name,

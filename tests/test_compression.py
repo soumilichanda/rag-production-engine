@@ -1,4 +1,3 @@
-﻿import pytest
 from app.retrieval.context_compressor import CrossEncoderContextCompressor
 
 
@@ -14,7 +13,12 @@ def test_compression_trims_length():
 
 def test_compress_candidates_preserves_metadata():
     compressor = CrossEncoderContextCompressor(max_tokens_per_chunk=20)
-    candidates = [{"chunk_id": "c1", "text": "High throughput async workers. Extra filler text here."}]
+    candidates = [
+        {
+            "chunk_id": "c1",
+            "text": "High throughput async workers. Extra filler text here.",
+        }
+    ]
     res = compressor.compress_candidates("async workers", candidates)
 
     assert res[0]["chunk_id"] == "c1"

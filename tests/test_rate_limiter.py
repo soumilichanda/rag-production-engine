@@ -1,4 +1,3 @@
-﻿import pytest
 from app.core.rate_limiter import SlidingWindowRateLimiter
 
 
