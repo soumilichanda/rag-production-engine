@@ -158,3 +158,10 @@ python benchmarks/load_test.py
 - **Endpoint:** \POST /v1/retrieve/compressed- **Compression Invariant:** Extracts top-salient sentences by query term overlap and clips payload to token budget.
 - **Empirical Token Savings:** **38–48% reduction** in downstream LLM prompt footprint while retaining 100% entity provenance.
 - **Latency Overhead:** $\le 1.8	ext{ ms}$ average scoring delay per candidate batch.
+
+---
+
+### Phase 16: Dynamic Prompt Assembly & Token Packing
+- **Assembler**: `PromptContextAssembler` with token budget estimation and score-weighted chunk sorting.
+- **Provenance**: Deterministic `[Doc: doc_id | Chunk: chunk_id]` tags to prevent LLM hallucinations.
+- **Endpoint**: `POST /v1/pipeline/assemble` with user/system prompt splitting and source metadata.

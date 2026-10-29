@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Production RAG Engine",
-    "description": "Vector retrieval microservice with semantic caching and latency telemetry profiling",
-    "version": "1.2.0"
+    "description": "Vector retrieval microservice with semantic reranking and context compression",
+    "version": "1.3.0"
   },
   "paths": {
     "/health": {
@@ -25,13 +25,32 @@
         }
       }
     },
-    "/v1/telemetry": {
+    "/v1/diagnostics/health": {
       "get": {
         "tags": [
-          "Telemetry"
+          "Diagnostics"
         ],
-        "summary": "Telemetry Stats",
-        "operationId": "telemetry_stats_v1_telemetry_get",
+        "summary": "Diagnostics Health",
+        "operationId": "diagnostics_health_v1_diagnostics_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/diagnostics/telemetry": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Diagnostics Telemetry",
+        "operationId": "diagnostics_telemetry_v1_diagnostics_telemetry_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -126,40 +145,41 @@
         }
       }
     },
-    "/v1/diagnostics/health": {
-      "get": {
+    "/v1/retrieve/compressed": {
+      "post": {
         "tags": [
-          "diagnostics"
+          "Retrieval"
         ],
-        "summary": "Health Check",
-        "description": "Liveness probe returning process uptime status.",
-        "operationId": "health_check_v1_diagnostics_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
+        "summary": "Retrieve Compressed Context",
+        "operationId": "retrieve_compressed_context_v1_retrieve_compressed_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
               }
             }
-          }
-        }
-      }
-    },
-    "/v1/diagnostics/telemetry": {
-      "get": {
-        "tags": [
-          "diagnostics"
-        ],
-        "summary": "Telemetry Probe",
-        "description": "Readiness probe reporting operational telemetry parameters.",
-        "operationId": "telemetry_probe_v1_diagnostics_telemetry_get",
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -172,7 +192,6 @@
           "Generation"
         ],
         "summary": "Generate Response",
-        "description": "Unified end-to-end endpoint: retrieve relevant context chunks and synthesize citation-grounded response.",
         "operationId": "generate_response_v1_generate_post",
         "requestBody": {
           "content": {
@@ -207,10 +226,93 @@
           }
         }
       }
+    },
+    "/v1/pipeline/assemble": {
+      "post": {
+        "tags": [
+          "Pipeline"
+        ],
+        "summary": "Assemble Prompt Context",
+        "operationId": "assemble_prompt_context_v1_pipeline_assemble_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptAssemblyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssembledPrompt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AssembledPrompt": {
+        "properties": {
+          "system_prompt": {
+            "type": "string",
+            "title": "System Prompt"
+          },
+          "user_prompt": {
+            "type": "string",
+            "title": "User Prompt"
+          },
+          "formatted_context": {
+            "type": "string",
+            "title": "Formatted Context"
+          },
+          "retained_chunks_count": {
+            "type": "integer",
+            "title": "Retained Chunks Count"
+          },
+          "total_estimated_tokens": {
+            "type": "integer",
+            "title": "Total Estimated Tokens"
+          },
+          "provenance_sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Provenance Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "system_prompt",
+          "user_prompt",
+          "formatted_context",
+          "retained_chunks_count",
+          "total_estimated_tokens",
+          "provenance_sources"
+        ],
+        "title": "AssembledPrompt"
+      },
       "DocumentChunk": {
         "properties": {
           "chunk_id": {
@@ -253,8 +355,7 @@
               "type": "string"
             },
             "type": "array",
-            "title": "Citations",
-            "description": "IDs of cited context chunks"
+            "title": "Citations"
           },
           "retrieved_count": {
             "type": "integer",
@@ -322,6 +423,44 @@
           "ingested_count"
         ],
         "title": "IngestionResponse"
+      },
+      "PromptAssemblyRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "chunks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Chunks"
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "title": "Max Context Tokens",
+            "default": 1500
+          },
+          "system_instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "chunks"
+        ],
+        "title": "PromptAssemblyRequest"
       },
       "QueryRequest": {
         "properties": {
