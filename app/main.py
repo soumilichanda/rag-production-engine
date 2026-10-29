@@ -1,3 +1,5 @@
+from typing import Any
+
 """
 app/main.py
 FastAPI gateway supporting indexing, retrieval, context compression, and generation.
@@ -163,4 +165,27 @@ async def generate_response(payload: QueryRequest):
         citations=citations,
         retrieved_count=len(citations),
         latency_ms=retrieval_res.latency_ms,
+    )
+
+
+# --- Phase 16: Dynamic Prompt Assembly ---
+from pydantic import BaseModel
+
+from app.pipeline.prompt_assembler import AssembledPrompt, PromptContextAssembler
+
+
+class PromptAssemblyRequest(BaseModel):
+    query: str
+    chunks: list[dict[str, Any]]
+    max_context_tokens: int = 1500
+    system_instruction: str | None = None
+
+
+@app.post("/v1/pipeline/assemble", response_model=AssembledPrompt, tags=["Pipeline"])
+async def assemble_prompt_context(req: PromptAssemblyRequest):
+    assembler = PromptContextAssembler(max_context_tokens=req.max_context_tokens)
+    return assembler.assemble(
+        query=req.query,
+        retrieved_chunks=req.chunks,
+        system_instruction=req.system_instruction,
     )
