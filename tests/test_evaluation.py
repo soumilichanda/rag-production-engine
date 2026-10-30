@@ -1,27 +1,40 @@
-from app.core.evaluator import RAGTriadEvaluator
+﻿import pytest
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+from app.evaluation.faithfulness import FaithfulnessEvaluator
 
 
-def test_rag_triad_perfect_grounding():
-    evaluator = RAGTriadEvaluator(relevance_threshold=0.5, faithfulness_threshold=0.5)
-    query = "vector database indexing"
-    contexts = [
-        "vector database indexing accelerates nearest neighbor search",
-        "indexing strategies optimize high dimensional vectors",
-    ]
-    answer = "vector database indexing accelerates nearest neighbor search"
-    metrics = evaluator.evaluate_triad(query, contexts, answer)
-
-    assert metrics["context_relevance"] > 0.5
-    assert metrics["faithfulness"] == 1.0
-    assert metrics["passed_triad"] is True
+def test_evaluator_direct_grounded():
+    evaluator = FaithfulnessEvaluator(token_overlap_threshold=0.4)
+    ctx = ["Vector search relies on cosine similarity in high-dimensional hyperspheres."]
+    ans = "Cosine similarity is computed in vector search."
+    res = evaluator.evaluate(ans, ctx)
+    assert res["score"] >= 0.70
+    assert not res["hallucinated"]
 
 
-def test_rag_triad_hallucination_detection():
-    evaluator = RAGTriadEvaluator(faithfulness_threshold=0.8)
-    query = "system memory requirements"
-    contexts = ["allocated 16 gigabytes ram for the container"]
-    answer = "the system requires 64 gigabytes gpu vram for inference"
-    metrics = evaluator.evaluate_triad(query, contexts, answer)
+def test_evaluator_direct_hallucination():
+    evaluator = FaithfulnessEvaluator(token_overlap_threshold=0.5)
+    ctx = ["Apples and oranges are common orchard fruits."]
+    ans = "Quantum computing uses superconductors to calculate matrix determinants."
+    res = evaluator.evaluate(ans, ctx)
+    assert res["score"] < 0.70
+    assert res["hallucinated"]
 
-    assert metrics["faithfulness"] < 0.6
-    assert metrics["passed_triad"] is False
+
+@pytest.mark.asyncio
+async def test_evaluate_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        payload = {
+            "answer": "FastAPI is a modern web framework with high async performance support.",
+            "contexts": ["FastAPI is a modern web framework for Python with async performance support."],
+            "threshold": 0.4
+        }
+        resp = await ac.post("/v1/pipeline/evaluate", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert "evaluation" in data
+        assert data["evaluation"]["score"] >= 0.70
+        assert not data["evaluation"]["hallucinated"]
