@@ -165,3 +165,13 @@ python benchmarks/load_test.py
 - **Assembler**: `PromptContextAssembler` with token budget estimation and score-weighted chunk sorting.
 - **Provenance**: Deterministic `[Doc: doc_id | Chunk: chunk_id]` tags to prevent LLM hallucinations.
 - **Endpoint**: `POST /v1/pipeline/assemble` with user/system prompt splitting and source metadata.
+
+---
+
+## 📈 Phase 17: Groundedness & Faithfulness Telemetry
+
+Automated evaluation framework calculating claim-level lexical and semantic citation fidelity.
+
+- **Endpoint:** `/v1/pipeline/evaluate`
+- **Evaluator Logic:** Decomposes synthesized text into discrete claim units and scores token overlap ratios against retrieved context chunks.
+- **Hallucination Detection:** Flags synthetic generations that drop beneath the 0.70 normalized threshold ($\tau$).

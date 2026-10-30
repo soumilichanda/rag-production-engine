@@ -267,6 +267,46 @@
           }
         }
       }
+    },
+    "/v1/pipeline/evaluate": {
+      "post": {
+        "tags": [
+          "Evaluation"
+        ],
+        "summary": "Evaluate Pipeline Response",
+        "description": "Evaluates response faithfulness against retrieved context chunks.",
+        "operationId": "evaluate_pipeline_response_v1_pipeline_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -339,6 +379,39 @@
           "text"
         ],
         "title": "DocumentChunk"
+      },
+      "EvaluatePayload": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "contexts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contexts"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer",
+          "contexts"
+        ],
+        "title": "EvaluatePayload"
       },
       "GenerationResponse": {
         "properties": {
