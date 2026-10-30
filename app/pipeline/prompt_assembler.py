@@ -1,9 +1,10 @@
-﻿"""
+"""
 Phase 16: Dynamic Prompt Context Assembler
 Assembles compressed, relevance-ordered context chunks into bounded prompt templates.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -13,7 +14,7 @@ class AssembledPrompt(BaseModel):
     formatted_context: str
     retained_chunks_count: int
     total_estimated_tokens: int
-    provenance_sources: List[Dict[str, Any]]
+    provenance_sources: list[dict[str, Any]]
 
 
 class PromptContextAssembler:
@@ -32,8 +33,8 @@ class PromptContextAssembler:
     def assemble(
         self,
         query: str,
-        retrieved_chunks: List[Dict[str, Any]],
-        system_instruction: Optional[str] = None,
+        retrieved_chunks: list[dict[str, Any]],
+        system_instruction: str | None = None,
     ) -> AssembledPrompt:
         # Sort by relevance score descending
         sorted_chunks = sorted(
@@ -47,8 +48,8 @@ class PromptContextAssembler:
             or "You are an accurate, grounded assistant. Answer the user query using strictly the provided context chunks. Cite source IDs in brackets."
         )
 
-        accumulated_context: List[str] = []
-        provenance: List[Dict[str, Any]] = []
+        accumulated_context: list[str] = []
+        provenance: list[dict[str, Any]] = []
         current_tokens = 0
 
         for idx, chunk in enumerate(sorted_chunks):
@@ -65,16 +66,22 @@ class PromptContextAssembler:
                 break
 
             accumulated_context.append(block)
-            provenance.append({
-                "document_id": doc_id,
-                "chunk_id": chunk_id,
-                "score": score,
-            })
+            provenance.append(
+                {
+                    "document_id": doc_id,
+                    "chunk_id": chunk_id,
+                    "score": score,
+                }
+            )
             current_tokens += block_tokens
 
         formatted_context = "\n---\n".join(accumulated_context)
         user_prompt = f"Context:\n{formatted_context}\n\nQuery: {query}\nAnswer:"
-        total_tokens = current_tokens + self.estimate_tokens(default_system) + self.estimate_tokens(query)
+        total_tokens = (
+            current_tokens
+            + self.estimate_tokens(default_system)
+            + self.estimate_tokens(query)
+        )
 
         return AssembledPrompt(
             system_prompt=default_system,

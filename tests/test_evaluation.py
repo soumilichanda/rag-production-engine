@@ -1,12 +1,15 @@
-﻿import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.evaluation.faithfulness import FaithfulnessEvaluator
+from app.main import app
 
 
 def test_evaluator_direct_grounded():
     evaluator = FaithfulnessEvaluator(token_overlap_threshold=0.4)
-    ctx = ["Vector search relies on cosine similarity in high-dimensional hyperspheres."]
+    ctx = [
+        "Vector search relies on cosine similarity in high-dimensional hyperspheres."
+    ]
     ans = "Cosine similarity is computed in vector search."
     res = evaluator.evaluate(ans, ctx)
     assert res["score"] >= 0.70
@@ -28,8 +31,10 @@ async def test_evaluate_endpoint():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
             "answer": "FastAPI is a modern web framework with high async performance support.",
-            "contexts": ["FastAPI is a modern web framework for Python with async performance support."],
-            "threshold": 0.4
+            "contexts": [
+                "FastAPI is a modern web framework for Python with async performance support."
+            ],
+            "threshold": 0.4,
         }
         resp = await ac.post("/v1/pipeline/evaluate", json=payload)
         assert resp.status_code == 200

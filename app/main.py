@@ -1,5 +1,6 @@
+from typing import Any
+
 from app.evaluation.faithfulness import FaithfulnessEvaluator
-from typing import Dict, Optional, List, Any
 
 """
 app/main.py
@@ -195,8 +196,8 @@ async def assemble_prompt_context(req: PromptAssemblyRequest):
 # --- Phase 17: Faithfulness & Groundedness Evaluation ---
 class EvaluatePayload(BaseModel):
     answer: str
-    contexts: List[str]
-    threshold: Optional[float] = 0.5
+    contexts: list[str]
+    threshold: float | None = 0.5
 
 
 @app.post("/v1/pipeline/evaluate", tags=["Evaluation"])
@@ -206,7 +207,4 @@ async def evaluate_pipeline_response(payload: EvaluatePayload):
     """
     evaluator = FaithfulnessEvaluator(token_overlap_threshold=payload.threshold or 0.5)
     result = evaluator.evaluate(answer=payload.answer, contexts=payload.contexts)
-    return {
-        "status": "success",
-        "evaluation": result
-    }
+    return {"status": "success", "evaluation": result}
