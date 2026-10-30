@@ -1,11 +1,11 @@
-﻿"""
+"""
 Phase 17: Groundedness & Faithfulness Evaluator
 Computes claim-level semantic overlap and source citation attribution
 to detect and flag synthetic hallucinations beyond retrieved context chunks.
 """
 
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 
 class FaithfulnessEvaluator:
@@ -16,16 +16,24 @@ class FaithfulnessEvaluator:
         cleaned = re.sub(r"[^\w\s]", "", text.lower())
         return {word for word in cleaned.split() if len(word) > 2}
 
-    def evaluate(self, answer: str, contexts: List[str]) -> Dict[str, Any]:
+    def evaluate(self, answer: str, contexts: list[str]) -> dict[str, Any]:
         """
         Evaluates answer claims against retrieved contexts.
         Returns normalized faithfulness score [0.0, 1.0] and hallucination flag.
         """
         if not answer.strip():
-            return {"score": 0.0, "hallucinated": True, "reasons": ["Empty response payload."]}
+            return {
+                "score": 0.0,
+                "hallucinated": True,
+                "reasons": ["Empty response payload."],
+            }
 
         if not contexts:
-            return {"score": 0.0, "hallucinated": True, "reasons": ["Context pool is empty."]}
+            return {
+                "score": 0.0,
+                "hallucinated": True,
+                "reasons": ["Context pool is empty."],
+            }
 
         # Build context vocabulary universe
         context_vocab = set()
