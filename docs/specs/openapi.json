@@ -307,6 +307,45 @@
           }
         }
       }
+    },
+    "/v1/pipeline/stream": {
+      "post": {
+        "tags": [
+          "Generation"
+        ],
+        "summary": "Stream Generation Pipeline",
+        "operationId": "stream_generation_pipeline_v1_pipeline_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

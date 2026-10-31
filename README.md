@@ -175,3 +175,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Endpoint:** `/v1/pipeline/evaluate`
 - **Evaluator Logic:** Decomposes synthesized text into discrete claim units and scores token overlap ratios against retrieved context chunks.
 - **Hallucination Detection:** Flags synthetic generations that drop beneath the 0.70 normalized threshold ($\tau$).
+
+---
+
+### Phase 18: Token Streaming & Server-Sent Events (SSE)
+- **Engine**: `StreamingContextSynthesizer` providing asynchronous token-by-token text generation.
+- **Protocol**: Standard SSE (`text/event-stream`) streaming format emitting `event: token` deltas and finalizing with an `event: citations` provenance payload and `data: [DONE]`.
+- **Gateway**: `POST /v1/pipeline/stream` mounted on FastAPI via `StreamingResponse` with connection-close isolation.
+- **Verification**: Async integration test harness (`tests/test_streaming.py`) validating header integrity, event boundaries, and citation schemas (30/30 suite passing).
