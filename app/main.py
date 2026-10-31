@@ -208,3 +208,16 @@ async def evaluate_pipeline_response(payload: EvaluatePayload):
     evaluator = FaithfulnessEvaluator(token_overlap_threshold=payload.threshold or 0.5)
     result = evaluator.evaluate(answer=payload.answer, contexts=payload.contexts)
     return {"status": "success", "evaluation": result}
+
+from fastapi.responses import StreamingResponse
+from app.generation.streamer import StreamingContextSynthesizer
+
+
+@app.post("/v1/pipeline/stream", tags=["Generation"])
+async def stream_generation_pipeline(request: QueryRequest):
+    candidates, _ = store.query(dummy_text_to_embedding(request.query), top_k=request.top_k, threshold=-1.0)
+    synthesizer = StreamingContextSynthesizer()
+    return StreamingResponse(
+        synthesizer.stream_response(request.query, candidates),
+        media_type="text/event-stream"
+    )
