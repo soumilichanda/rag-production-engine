@@ -1,3 +1,4 @@
+from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from typing import Any
 
 from app.evaluation.faithfulness import FaithfulnessEvaluator
@@ -43,6 +44,8 @@ DIMENSION = 384
 store = InMemoryVectorStore(dimension=DIMENSION)
 reranker = ExactTokenOverlapReranker()
 compressor = CrossEncoderContextCompressor(max_tokens_per_chunk=64)
+cross_encoder = CrossEncoderAttentionReranker()
+
 
 
 def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
@@ -215,9 +218,10 @@ from app.generation.streamer import StreamingContextSynthesizer
 
 @app.post("/v1/pipeline/stream", tags=["Generation"])
 async def stream_generation_pipeline(request: QueryRequest):
-    candidates, _ = store.query(dummy_text_to_embedding(request.query), top_k=request.top_k, threshold=-1.0)
+    candidates, _ = store.query(dummy_text_to_embedding(request.query), top_k=request.top_k * 2, threshold=-1.0)
+    reranked = cross_encoder.rerank(request.query, candidates, top_k=request.top_k)
     synthesizer = StreamingContextSynthesizer()
     return StreamingResponse(
-        synthesizer.stream_response(request.query, candidates),
+        synthesizer.stream_response(request.query, reranked),
         media_type="text/event-stream"
     )
