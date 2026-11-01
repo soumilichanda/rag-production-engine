@@ -183,3 +183,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Protocol**: Standard SSE (`text/event-stream`) streaming format emitting `event: token` deltas and finalizing with an `event: citations` provenance payload and `data: [DONE]`.
 - **Gateway**: `POST /v1/pipeline/stream` mounted on FastAPI via `StreamingResponse` with connection-close isolation.
 - **Verification**: Async integration test harness (`tests/test_streaming.py`) validating header integrity, event boundaries, and citation schemas (30/30 suite passing).
+
+---
+
+## ⚡ Phase 19: Cross-Encoder Attention Reranking & Stream Telemetry
+
+- **Component:** `CrossEncoderAttentionReranker` in `app/retrieval/cross_encoder_reranker.py`.
+- **Scoring Invariant:** Evaluates query-document term density and positional decays prior to SSE token streaming.
+- **Resilience:** `/v1/pipeline/stream` handles streaming context generation with cross-encoder candidate refinement and disconnect resilience.
