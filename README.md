@@ -191,3 +191,13 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Component:** `CrossEncoderAttentionReranker` in `app/retrieval/cross_encoder_reranker.py`.
 - **Scoring Invariant:** Evaluates query-document term density and positional decays prior to SSE token streaming.
 - **Resilience:** `/v1/pipeline/stream` handles streaming context generation with cross-encoder candidate refinement and disconnect resilience.
+
+
+---
+
+## 🛰️ Phase 20: Production Distributed Tracing & OpenTelemetry Collector Export
+
+- **Span Topology:** Granular parent-child span lifecycle tracking across semantic cross-encoder rerankers and token streaming.
+- **Trace Context Propagation:** W3C Trace Context (`traceparent`) compliant carrier injection and root trace ID correlation.
+- **Inspection Route:** `GET /v1/telemetry/traces/latest` reporting microsecond durations and span hierarchy metadata.
+- **Verification:** Passing async integration harness in `tests/test_distributed_tracing.py`.

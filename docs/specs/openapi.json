@@ -346,6 +346,25 @@
           }
         }
       }
+    },
+    "/v1/telemetry/traces/latest": {
+      "get": {
+        "tags": [
+          "Telemetry"
+        ],
+        "summary": "Get Latest Pipeline Trace",
+        "operationId": "get_latest_pipeline_trace_v1_telemetry_traces_latest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
