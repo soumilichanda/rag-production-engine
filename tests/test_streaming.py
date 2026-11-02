@@ -1,11 +1,13 @@
-﻿"""
+"""
 tests/test_streaming.py
 Integration tests for Server-Sent Events (SSE) token streaming endpoint.
 """
 
-import pytest
 import json
-from httpx import AsyncClient, ASGITransport
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 
 
@@ -18,7 +20,7 @@ async def test_stream_pipeline_sse_flow():
             "documents": [
                 {
                     "chunk_id": "stream_chunk_01",
-                    "text": "Server-Sent Events enable unidirectional low-latency token streaming for generative AI."
+                    "text": "Server-Sent Events enable unidirectional low-latency token streaming for generative AI.",
                 }
             ]
         }
@@ -28,7 +30,7 @@ async def test_stream_pipeline_sse_flow():
         # 2. Invoke streaming endpoint
         stream_payload = {
             "query": "How do SSE streams work in generative AI?",
-            "top_k": 2
+            "top_k": 2,
         }
         res = await client.post("/v1/pipeline/stream", json=stream_payload)
         assert res.status_code == 200
@@ -40,8 +42,12 @@ async def test_stream_pipeline_sse_flow():
         assert "data: [DONE]" in raw_stream
 
         # Validate token payloads and citations payload
-        lines = [line.replace("data: ", "").strip() for line in raw_stream.splitlines() if line.startswith("data: ")]
-        
+        lines = [
+            line.replace("data: ", "").strip()
+            for line in raw_stream.splitlines()
+            if line.startswith("data: ")
+        ]
+
         token_events = []
         citation_event = None
         has_done = False

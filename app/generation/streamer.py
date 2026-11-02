@@ -1,11 +1,12 @@
-﻿"""
+"""
 app/generation/streamer.py
 Asynchronous token streaming with live citation mapping and SSE formatting.
 """
 
 import asyncio
 import json
-from typing import AsyncGenerator, List
+from collections.abc import AsyncGenerator
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -19,18 +20,16 @@ class StreamingContextSynthesizer:
         self.token_delay = token_delay
 
     async def stream_response(
-        self, query: str, context_chunks: List[RetrievedChunk]
+        self, query: str, context_chunks: list[RetrievedChunk]
     ) -> AsyncGenerator[str, None]:
         # Formulate grounded answer tokens
-        answer_text = (
-            f"Synthesized response for query '{query}' based on {len(context_chunks)} retrieved contexts."
-        )
+        answer_text = f"Synthesized response for query '{query}' based on {len(context_chunks)} retrieved contexts."
         tokens = answer_text.split(" ")
 
         for idx, token in enumerate(tokens):
             event_payload = {
                 "event": "token",
-                "data": {"token": token + " ", "index": idx}
+                "data": {"token": token + " ", "index": idx},
             }
             yield f"data: {json.dumps(event_payload)}\n\n"
             await asyncio.sleep(self.token_delay)
@@ -43,7 +42,7 @@ class StreamingContextSynthesizer:
                     {"chunk_id": c.chunk_id, "score": c.similarity_score}
                     for c in context_chunks
                 ]
-            }
+            },
         }
         yield f"data: {json.dumps(citation_payload)}\n\n"
         yield "data: [DONE]\n\n"
