@@ -1,5 +1,6 @@
-﻿import pytest
-from httpx import AsyncClient, ASGITransport
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 from app.telemetry.tracer import DistributedPipelineTracer
 
@@ -27,9 +28,11 @@ def test_tracer_parent_child_lineage():
 def test_tracer_exception_propagation():
     tracer = DistributedPipelineTracer()
 
-    with pytest.raises(RuntimeError):
-        with tracer.start_as_current_span("failing.stream"):
-            raise RuntimeError("stream disconnection during chunk synthesis")
+    with (
+        pytest.raises(RuntimeError),
+        tracer.start_as_current_span("failing.stream"),
+    ):
+        raise RuntimeError("stream disconnection during chunk synthesis")
 
     batch = tracer.export_telemetry_batch()
     assert batch["total_spans"] == 1
