@@ -1,11 +1,11 @@
-﻿"""
+"""
 Phase 19: Cross-Encoder Attention Reranker.
 Computes token-interaction relevance scores across query-chunk pairs
 to optimize retrieved context order prior to prompt synthesis and streaming.
 """
 
 import math
-from typing import List
+
 from app.schemas.payloads import RetrievedChunk
 
 
@@ -29,13 +29,17 @@ class CrossEncoderAttentionReranker:
             matches = [idx for idx, d in enumerate(doc_tokens) if q in d]
             if matches:
                 # Attention prioritizes terms appearing earlier in the chunk
-                term_score = sum(math.exp(-self.position_decay * (idx / doc_len)) for idx in matches)
+                term_score = sum(
+                    math.exp(-self.position_decay * (idx / doc_len)) for idx in matches
+                )
                 score += term_score
 
         normalized_score = score / (len(q_tokens) + 1e-5)
         return float(round(math.tanh(normalized_score), 4))
 
-    def rerank(self, query: str, candidates: List[RetrievedChunk], top_k: int = None) -> List[RetrievedChunk]:
+    def rerank(
+        self, query: str, candidates: list[RetrievedChunk], top_k: int | None = None
+    ) -> list[RetrievedChunk]:
         if not candidates:
             return []
 

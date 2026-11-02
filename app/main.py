@@ -1,7 +1,8 @@
-from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from typing import Any
 
 from app.evaluation.faithfulness import FaithfulnessEvaluator
+from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
+from app.telemetry.tracer import DistributedPipelineTracer
 
 """
 app/main.py
@@ -45,7 +46,6 @@ store = InMemoryVectorStore(dimension=DIMENSION)
 reranker = ExactTokenOverlapReranker()
 compressor = CrossEncoderContextCompressor(max_tokens_per_chunk=64)
 cross_encoder = CrossEncoderAttentionReranker()
-
 
 
 def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
@@ -212,16 +212,31 @@ async def evaluate_pipeline_response(payload: EvaluatePayload):
     result = evaluator.evaluate(answer=payload.answer, contexts=payload.contexts)
     return {"status": "success", "evaluation": result}
 
+
 from fastapi.responses import StreamingResponse
+
 from app.generation.streamer import StreamingContextSynthesizer
 
 
 @app.post("/v1/pipeline/stream", tags=["Generation"])
 async def stream_generation_pipeline(request: QueryRequest):
-    candidates, _ = store.query(dummy_text_to_embedding(request.query), top_k=request.top_k * 2, threshold=-1.0)
+    candidates, _ = store.query(
+        dummy_text_to_embedding(request.query), top_k=request.top_k * 2, threshold=-1.0
+    )
     reranked = cross_encoder.rerank(request.query, candidates, top_k=request.top_k)
     synthesizer = StreamingContextSynthesizer()
     return StreamingResponse(
         synthesizer.stream_response(request.query, reranked),
-        media_type="text/event-stream"
+        media_type="text/event-stream",
     )
+
+
+@app.get("/v1/telemetry/traces/latest", tags=["Telemetry"])
+async def get_latest_pipeline_trace():
+    tracer = DistributedPipelineTracer()
+    with (
+        tracer.start_as_current_span("pipeline.gateway.probe"),
+        tracer.start_as_current_span("reranker.attention.sample"),
+    ):
+        pass
+    return tracer.export_telemetry_batch()
