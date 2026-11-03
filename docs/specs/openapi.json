@@ -365,6 +365,28 @@
           }
         }
       }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Observability"
+        ],
+        "summary": "Metrics Endpoint",
+        "description": "Prometheus exposition endpoint serving scrapable metrics.",
+        "operationId": "metrics_endpoint_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

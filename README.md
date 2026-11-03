@@ -201,3 +201,13 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Trace Context Propagation:** W3C Trace Context (`traceparent`) compliant carrier injection and root trace ID correlation.
 - **Inspection Route:** `GET /v1/telemetry/traces/latest` reporting microsecond durations and span hierarchy metadata.
 - **Verification:** Passing async integration harness in `tests/test_distributed_tracing.py`.
+
+
+---
+
+## 📊 Phase 21: Production Prometheus Metrics & Latency Histograms
+
+- **Prometheus Metric Exposition:** Scrapeable standard `GET /metrics` serving monotonic counters and bucketed request duration histograms.
+- **Tail Latency Histograms:** Millisecond observation bins calculating scrapable $p50$, $p95$, and $p99$ metrics across endpoints.
+- **Thread-Safe Collector:** Reentrant synchronization handling high-throughput asynchronous workloads without lock contention.
+- **Verification Harness:** Async test coverage in `tests/test_prometheus_metrics.py`.
