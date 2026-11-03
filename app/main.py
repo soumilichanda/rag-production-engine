@@ -1,7 +1,10 @@
 from typing import Any
 
+from fastapi.responses import PlainTextResponse
+
 from app.evaluation.faithfulness import FaithfulnessEvaluator
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
+from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
 
 """
@@ -240,3 +243,9 @@ async def get_latest_pipeline_trace():
     ):
         pass
     return tracer.export_telemetry_batch()
+
+
+@app.get("/metrics", response_class=PlainTextResponse, tags=["Observability"])
+async def metrics_endpoint():
+    """Prometheus exposition endpoint serving scrapable metrics."""
+    return metrics_exporter.scrape_metrics()
