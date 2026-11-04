@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi.responses import PlainTextResponse
 
+from app.core.semantic_cache import SemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.telemetry.metrics import metrics_exporter
@@ -15,7 +16,7 @@ FastAPI gateway supporting indexing, retrieval, context compression, and generat
 import time
 
 import numpy as np
-from fastapi import FastAPI, status
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.reranker import ExactTokenOverlapReranker
@@ -43,6 +44,8 @@ app = FastAPI(
     description="Vector retrieval microservice with semantic reranking and context compression",
     version="1.3.0",
 )
+semantic_cache = SemanticCache()
+
 
 DIMENSION = 384
 store = InMemoryVectorStore(dimension=DIMENSION)
@@ -249,3 +252,26 @@ async def get_latest_pipeline_trace():
 async def metrics_endpoint():
     """Prometheus exposition endpoint serving scrapable metrics."""
     return metrics_exporter.scrape_metrics()
+
+
+# --- Phase 22: Cache Invalidation ---
+class CacheInvalidationRequest(BaseModel):
+    tag: str | None = None
+    flush_all: bool = False
+
+
+@app.post("/v1/cache/invalidate", tags=["Admin"])
+async def invalidate_cache(payload: CacheInvalidationRequest):
+    if payload.flush_all:
+        evicted = semantic_cache.invalidate_all()
+        return {"status": "ok", "evicted_entries": evicted, "mode": "all"}
+    if payload.tag:
+        evicted = semantic_cache.invalidate_by_tag(payload.tag)
+        return {
+            "status": "ok",
+            "evicted_entries": evicted,
+            "mode": f"tag:{payload.tag}",
+        }
+    raise HTTPException(
+        status_code=400, detail="Must specify either tag or flush_all=True"
+    )
