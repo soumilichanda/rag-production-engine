@@ -211,3 +211,12 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Tail Latency Histograms:** Millisecond observation bins calculating scrapable $p50$, $p95$, and $p99$ metrics across endpoints.
 - **Thread-Safe Collector:** Reentrant synchronization handling high-throughput asynchronous workloads without lock contention.
 - **Verification Harness:** Async test coverage in `tests/test_prometheus_metrics.py`.
+
+---
+
+## ⚡ Phase 22: Distributed Semantic Cache Invalidation & TTL Policies
+
+- **Component:** `SemanticCache` in `app/core/semantic_cache.py`.
+- **TTL Eviction:** Enforces strict wall-clock time expiration per cache entry with passive background eviction.
+- **Stampede Locks:** Re-entrant keyed mutex locks prevent redundant parallel LLM embedding generation under sudden query bursts.
+- **Admin Invalidation:** `POST /v1/cache/invalidate` supports both atomic global flush and selective tag/domain partition pruning.

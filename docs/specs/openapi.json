@@ -387,6 +387,45 @@
           }
         }
       }
+    },
+    "/v1/cache/invalidate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Invalidate Cache",
+        "operationId": "invalidate_cache_v1_cache_invalidate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CacheInvalidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -432,6 +471,28 @@
           "provenance_sources"
         ],
         "title": "AssembledPrompt"
+      },
+      "CacheInvalidationRequest": {
+        "properties": {
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "flush_all": {
+            "type": "boolean",
+            "title": "Flush All",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "CacheInvalidationRequest"
       },
       "DocumentChunk": {
         "properties": {
