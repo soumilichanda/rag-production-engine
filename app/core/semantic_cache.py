@@ -1,87 +1,109 @@
-"""
+﻿"""
 app/core/semantic_cache.py
-Semantic vector caching engine based on cosine distance cutoffs.
+Thread-safe semantic cache with TTL expiration, stampede locks, and tag invalidation.
 """
 
+from collections import OrderedDict
+import threading
 import time
-from typing import Any
-
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 
-class SemanticCache:
-    """
-    In-memory semantic cache storing dense query embeddings and retrieved responses.
-    Cache hit is triggered when cosine distance <= distance_threshold.
-    """
+class CacheEntry:
+    def __init__(self, embedding: np.ndarray, payload: Any, ttl_seconds: float, tags: Optional[List[str]] = None):
+        self.embedding = embedding
+        self.payload = payload
+        self.expires_at = time.time() + ttl_seconds
+        self.tags = set(tags or [])
 
-    def __init__(
-        self, dimension: int = 8, distance_threshold: float = 0.08, capacity: int = 500
-    ):
-        self.dimension = dimension
-        self.distance_threshold = distance_threshold
+    def is_expired(self) -> bool:
+        return time.time() > self.expires_at
+
+
+class SemanticCache:
+    def __init__(self, capacity: int = 512, threshold: float = 0.95, default_ttl: float = 300.0):
         self.capacity = capacity
-        self.query_vectors: list[np.ndarray] = []
-        self.cached_payloads: list[dict[str, Any]] = []
+        self.threshold = threshold
+        self.default_ttl = default_ttl
+        self.cache: OrderedDict[str, CacheEntry] = OrderedDict()
+        self.lock = threading.RLock()
+        self.stampede_locks: Dict[str, threading.Lock] = {}
         self.hits = 0
         self.misses = 0
 
-    def _cosine_distance(self, v1: np.ndarray, v2: np.ndarray) -> float:
-        dot = float(np.dot(v1, v2))
-        norm_product = float(np.linalg.norm(v1) * np.linalg.norm(v2))
-        if norm_product == 0.0:
-            return 1.0
-        similarity = dot / norm_product
-        return max(0.0, 1.0 - similarity)
+    def _normalize(self, vec: np.ndarray) -> np.ndarray:
+        norm = np.linalg.norm(vec)
+        return vec if norm == 0 else vec / norm
 
-    def lookup(self, query_vector: np.ndarray) -> tuple[dict[str, Any] | None, float]:
-        start = time.perf_counter()
-        if not self.query_vectors:
+    def get_stampede_lock(self, key: str) -> threading.Lock:
+        with self.lock:
+            if key not in self.stampede_locks:
+                self.stampede_locks[key] = threading.Lock()
+            return self.stampede_locks[key]
+
+    def get(self, query_vec: np.ndarray) -> Optional[Any]:
+        norm_q = self._normalize(np.asarray(query_vec, dtype=np.float32))
+
+        with self.lock:
+            if not self.cache:
+                self.misses += 1
+                return None
+
+            expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
+            for k in expired_keys:
+                del self.cache[k]
+
+            best_key: Optional[str] = None
+            best_sim = -1.0
+
+            for key, entry in self.cache.items():
+                sim = float(np.dot(norm_q, entry.embedding))
+                if sim > best_sim:
+                    best_sim = sim
+                    best_key = key
+
+            if best_key is not None and best_sim >= self.threshold:
+                self.hits += 1
+                self.cache.move_to_end(best_key)
+                return self.cache[best_key].payload
+
             self.misses += 1
-            return None, (time.perf_counter() - start) * 1000.0
+            return None
 
-        q_norm = query_vector / (np.linalg.norm(query_vector) or 1.0)
-        min_dist = float("inf")
-        best_idx = -1
+    def put(self, query_key: str, query_vec: np.ndarray, payload: Any, ttl: Optional[float] = None, tags: Optional[List[str]] = None) -> None:
+        norm_q = self._normalize(np.asarray(query_vec, dtype=np.float32))
+        active_ttl = ttl if ttl is not None else self.default_ttl
 
-        for idx, cached_vec in enumerate(self.query_vectors):
-            dist = self._cosine_distance(q_norm, cached_vec)
-            if dist < min_dist:
-                min_dist = dist
-                best_idx = idx
+        with self.lock:
+            if query_key in self.cache:
+                self.cache.move_to_end(query_key)
+            self.cache[query_key] = CacheEntry(norm_q, payload, active_ttl, tags)
 
-        lookup_latency = (time.perf_counter() - start) * 1000.0
+            if len(self.cache) > self.capacity:
+                self.cache.popitem(last=False)
 
-        if min_dist <= self.distance_threshold and best_idx != -1:
-            self.hits += 1
-            payload = self.cached_payloads[best_idx].copy()
-            payload["cache_hit"] = True
-            payload["semantic_distance"] = round(min_dist, 5)
-            return payload, lookup_latency
+    def invalidate_by_tag(self, tag: str) -> int:
+        with self.lock:
+            targets = [k for k, entry in self.cache.items() if tag in entry.tags]
+            for k in targets:
+                del self.cache[k]
+            return len(targets)
 
-        self.misses += 1
-        return None, lookup_latency
+    def invalidate_all(self) -> int:
+        with self.lock:
+            count = len(self.cache)
+            self.cache.clear()
+            return count
 
-    def insert(
-        self, query_vector: np.ndarray, response_payload: dict[str, Any]
-    ) -> None:
-        if len(self.query_vectors) >= self.capacity:
-            # Evict oldest entry (FIFO)
-            self.query_vectors.pop(0)
-            self.cached_payloads.pop(0)
-
-        q_norm = query_vector / (np.linalg.norm(query_vector) or 1.0)
-        self.query_vectors.append(q_norm)
-        self.cached_payloads.append(response_payload)
-
-    def get_telemetry(self) -> dict[str, Any]:
-        total = self.hits + self.misses
-        hit_rate = (self.hits / total) if total > 0 else 0.0
-        return {
-            "capacity": self.capacity,
-            "cached_entries": len(self.query_vectors),
-            "hits": self.hits,
-            "misses": self.misses,
-            "hit_rate": round(hit_rate, 4),
-            "distance_threshold": self.distance_threshold,
-        }
+    def stats(self) -> dict:
+        with self.lock:
+            total = self.hits + self.misses
+            ratio = (self.hits / total) if total > 0 else 0.0
+            return {
+                "size": len(self.cache),
+                "capacity": self.capacity,
+                "hits": self.hits,
+                "misses": self.misses,
+                "hit_ratio": round(ratio, 3),
+            }
