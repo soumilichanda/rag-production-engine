@@ -220,3 +220,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **TTL Eviction:** Enforces strict wall-clock time expiration per cache entry with passive background eviction.
 - **Stampede Locks:** Re-entrant keyed mutex locks prevent redundant parallel LLM embedding generation under sudden query bursts.
 - **Admin Invalidation:** `POST /v1/cache/invalidate` supports both atomic global flush and selective tag/domain partition pruning.
+
+---
+
+## ⚡ Phase 23: Asynchronous Semantic Eviction & LRU Compaction
+
+- **Compaction Engine:** Proactive and passive LRU memory reclamation under capacity bounds.
+- **Admin Compaction:** `POST /v1/cache/compact` forces synchronous eviction of stale items and reports eviction counters.
+- **Telemetry Integration:** Tracking cumulative cache hits, misses, hit ratio, and eviction pressure metrics.

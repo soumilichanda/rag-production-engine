@@ -426,6 +426,25 @@
           }
         }
       }
+    },
+    "/v1/cache/compact": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Compact Cache",
+        "operationId": "compact_cache_v1_cache_compact_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
