@@ -275,3 +275,9 @@ async def invalidate_cache(payload: CacheInvalidationRequest):
     raise HTTPException(
         status_code=400, detail="Must specify either tag or flush_all=True"
     )
+
+
+@app.post("/v1/cache/compact", tags=["Admin"])
+async def compact_cache():
+    freed = semantic_cache.compact()
+    return {"status": "ok", "entries_evicted": freed, "stats": semantic_cache.stats()}
