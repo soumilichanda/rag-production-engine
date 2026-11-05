@@ -1,17 +1,25 @@
-﻿"""
+"""
 app/core/semantic_cache.py
-Thread-safe semantic cache with TTL expiration, stampede locks, and tag invalidation.
+Thread-safe semantic cache with TTL expiration, stampede locks,
+tag invalidation, and async LRU memory compaction.
 """
 
-from collections import OrderedDict
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from collections import OrderedDict
+from typing import Any
+
 import numpy as np
 
 
 class CacheEntry:
-    def __init__(self, embedding: np.ndarray, payload: Any, ttl_seconds: float, tags: Optional[List[str]] = None):
+    def __init__(
+        self,
+        embedding: np.ndarray,
+        payload: Any,
+        ttl_seconds: float,
+        tags: list[str] | None = None,
+    ):
         self.embedding = embedding
         self.payload = payload
         self.expires_at = time.time() + ttl_seconds
@@ -22,15 +30,18 @@ class CacheEntry:
 
 
 class SemanticCache:
-    def __init__(self, capacity: int = 512, threshold: float = 0.95, default_ttl: float = 300.0):
+    def __init__(
+        self, capacity: int = 512, threshold: float = 0.95, default_ttl: float = 300.0
+    ):
         self.capacity = capacity
         self.threshold = threshold
         self.default_ttl = default_ttl
         self.cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self.lock = threading.RLock()
-        self.stampede_locks: Dict[str, threading.Lock] = {}
+        self.stampede_locks: dict[str, threading.Lock] = {}
         self.hits = 0
         self.misses = 0
+        self.evictions = 0
 
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
         norm = np.linalg.norm(vec)
@@ -42,7 +53,22 @@ class SemanticCache:
                 self.stampede_locks[key] = threading.Lock()
             return self.stampede_locks[key]
 
-    def get(self, query_vec: np.ndarray) -> Optional[Any]:
+    def compact(self) -> int:
+        """Evicts expired items and trims cache to capacity."""
+        with self.lock:
+            initial_count = len(self.cache)
+            expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
+            for k in expired_keys:
+                del self.cache[k]
+                self.evictions += 1
+
+            while len(self.cache) > self.capacity:
+                self.cache.popitem(last=False)
+                self.evictions += 1
+
+            return initial_count - len(self.cache)
+
+    def get(self, query_vec: np.ndarray) -> Any | None:
         norm_q = self._normalize(np.asarray(query_vec, dtype=np.float32))
 
         with self.lock:
@@ -50,14 +76,15 @@ class SemanticCache:
                 self.misses += 1
                 return None
 
-            expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
-            for k in expired_keys:
-                del self.cache[k]
-
-            best_key: Optional[str] = None
+            best_key: str | None = None
             best_sim = -1.0
 
-            for key, entry in self.cache.items():
+            for key, entry in list(self.cache.items()):
+                if entry.is_expired():
+                    del self.cache[key]
+                    self.evictions += 1
+                    continue
+
                 sim = float(np.dot(norm_q, entry.embedding))
                 if sim > best_sim:
                     best_sim = sim
@@ -71,7 +98,14 @@ class SemanticCache:
             self.misses += 1
             return None
 
-    def put(self, query_key: str, query_vec: np.ndarray, payload: Any, ttl: Optional[float] = None, tags: Optional[List[str]] = None) -> None:
+    def put(
+        self,
+        query_key: str,
+        query_vec: np.ndarray,
+        payload: Any,
+        ttl: float | None = None,
+        tags: list[str] | None = None,
+    ) -> None:
         norm_q = self._normalize(np.asarray(query_vec, dtype=np.float32))
         active_ttl = ttl if ttl is not None else self.default_ttl
 
@@ -82,17 +116,20 @@ class SemanticCache:
 
             if len(self.cache) > self.capacity:
                 self.cache.popitem(last=False)
+                self.evictions += 1
 
     def invalidate_by_tag(self, tag: str) -> int:
         with self.lock:
             targets = [k for k, entry in self.cache.items() if tag in entry.tags]
             for k in targets:
                 del self.cache[k]
+                self.evictions += 1
             return len(targets)
 
     def invalidate_all(self) -> int:
         with self.lock:
             count = len(self.cache)
+            self.evictions += count
             self.cache.clear()
             return count
 
@@ -106,4 +143,5 @@ class SemanticCache:
                 "hits": self.hits,
                 "misses": self.misses,
                 "hit_ratio": round(ratio, 3),
+                "evictions": self.evictions,
             }
