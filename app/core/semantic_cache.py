@@ -1,7 +1,7 @@
 """
 app/core/semantic_cache.py
 Thread-safe semantic cache with TTL expiration, stampede locks,
-tag invalidation, and async LRU memory compaction.
+tag invalidation, async LRU memory compaction, and legacy interface support.
 """
 
 import threading
@@ -31,10 +31,25 @@ class CacheEntry:
 
 class SemanticCache:
     def __init__(
-        self, capacity: int = 512, threshold: float = 0.95, default_ttl: float = 300.0
+        self,
+        capacity: int = 512,
+        threshold: float = 0.90,
+        default_ttl: float = 300.0,
+        dimension: int | None = None,
+        distance_threshold: float | None = None,
+        similarity_cutoff: float | None = None,
     ):
         self.capacity = capacity
-        self.threshold = threshold
+        # Adapt distance threshold (dist <= 0.10 means sim >= 0.90)
+        if distance_threshold is not None:
+            self.threshold = 1.0 - distance_threshold
+        elif similarity_cutoff is not None:
+            self.threshold = similarity_cutoff
+        else:
+            self.threshold = threshold
+
+        self.dimension = dimension
+        self.distance_threshold = distance_threshold
         self.default_ttl = default_ttl
         self.cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self.lock = threading.RLock()
@@ -54,7 +69,6 @@ class SemanticCache:
             return self.stampede_locks[key]
 
     def compact(self) -> int:
-        """Evicts expired items and trims cache to capacity."""
         with self.lock:
             initial_count = len(self.cache)
             expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
@@ -117,6 +131,37 @@ class SemanticCache:
             if len(self.cache) > self.capacity:
                 self.cache.popitem(last=False)
                 self.evictions += 1
+
+    # --- Legacy API Compatibility Aliases ---
+    def lookup(self, query_vector: np.ndarray) -> tuple[dict[str, Any] | None, float]:
+        start = time.perf_counter()
+        res = self.get(query_vector)
+        latency = (time.perf_counter() - start) * 1000.0
+        if res is not None:
+            if isinstance(res, dict):
+                payload = res.copy()
+            else:
+                payload = {"data": res}
+            payload["cache_hit"] = True
+            return payload, latency
+        return None, latency
+
+    def insert(
+        self, query_vector: np.ndarray, response_payload: dict[str, Any]
+    ) -> None:
+        key = f"k_{len(self.cache)}_{time.time()}"
+        self.put(key, query_vector, response_payload)
+
+    def get_telemetry(self) -> dict[str, Any]:
+        s = self.stats()
+        return {
+            "capacity": self.capacity,
+            "cached_entries": s["size"],
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": s["hit_ratio"],
+            "distance_threshold": self.distance_threshold or 0.08,
+        }
 
     def invalidate_by_tag(self, tag: str) -> int:
         with self.lock:
