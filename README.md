@@ -228,3 +228,12 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Compaction Engine:** Proactive and passive LRU memory reclamation under capacity bounds.
 - **Admin Compaction:** `POST /v1/cache/compact` forces synchronous eviction of stale items and reports eviction counters.
 - **Telemetry Integration:** Tracking cumulative cache hits, misses, hit ratio, and eviction pressure metrics.
+
+---
+
+## ⚡ Phase 24: Distributed Embedding Ingestion & Sharded Vector Indexing
+
+- **Component:** `ShardedVectorIndex` in `app/retrieval/sharded_index.py`.
+- **Lock-Striped Sharding:** Partitions high-dimensional vectors across configurable bucket counts (`num_shards`) with dedicated `threading.RLock()` per partition, eliminating global write-lock bottlenecks.
+- **Async Batch Ingest:** `ParallelIngestPipeline` aggregates multi-document payloads into contiguous sub-matrices, parallelizing non-conflicting partition insertions.
+- **Scatter-Gather Search:** Executes parallel candidate extraction across independent shards before performing global Top-K heap merges.
