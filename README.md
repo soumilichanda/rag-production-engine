@@ -237,3 +237,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Lock-Striped Sharding:** Partitions high-dimensional vectors across configurable bucket counts (`num_shards`) with dedicated `threading.RLock()` per partition, eliminating global write-lock bottlenecks.
 - **Async Batch Ingest:** `ParallelIngestPipeline` aggregates multi-document payloads into contiguous sub-matrices, parallelizing non-conflicting partition insertions.
 - **Scatter-Gather Search:** Executes parallel candidate extraction across independent shards before performing global Top-K heap merges.
+
+---
+
+## ⚡ Phase 25: Consistent Hashing Ring & Virtual Node Replication
+
+- **Dynamic Sharding:** `ConsistentHashRing` in `app/retrieval/consistent_hash.py` with 64–100 virtual replicas per shard.
+- **Partition Stability:** Eliminates catastrophic rehash cascades; adding or removing shards redistributes only $\mathcal{O}(N / K)$ keys without full index migrations.
+- **Lock-Striped Ingestion:** Integrates directly with `ShardedVectorIndex` for concurrent write isolation across virtual partition boundaries.
