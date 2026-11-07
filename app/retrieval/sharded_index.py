@@ -1,17 +1,17 @@
 ﻿"""
 app/retrieval/sharded_index.py
-Lock-striped partitioned vector index supporting high-concurrency ingestion and scatter-gather retrieval.
+Lock-striped partitioned vector index supporting high-concurrency ingestion,
+consistent-hash ring routing, and scatter-gather retrieval.
 """
 
 import threading
 import numpy as np
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 from app.schemas.payloads import DocumentChunk, RetrievedChunk
+from app.retrieval.consistent_hash import ConsistentHashRing
 
 
 class ShardPartition:
-    """An isolated vector shard holding partitioned embeddings and chunks with dedicated read/write locks."""
-
     def __init__(self, shard_id: int, dimension: int):
         self.shard_id = shard_id
         self.dimension = dimension
@@ -54,18 +54,18 @@ class ShardPartition:
 
 
 class ShardedVectorIndex:
-    """Thread-safe lock-striped vector store distributing vectors across multiple isolated partitions."""
-
-    def __init__(self, dimension: int = 384, num_shards: int = 8):
+    def __init__(self, dimension: int = 384, num_shards: int = 8, virtual_replicas: int = 64):
         self.dimension = dimension
         self.num_shards = num_shards
-        self.shards: List[ShardPartition] = [
-            ShardPartition(shard_id=i, dimension=dimension) for i in range(num_shards)
-        ]
+        shard_ids = list(range(num_shards))
+        self.hash_ring = ConsistentHashRing(shards=shard_ids, virtual_replicas=virtual_replicas)
+        self.shards: Dict[int, ShardPartition] = {
+            i: ShardPartition(shard_id=i, dimension=dimension) for i in shard_ids
+        }
 
     def _route(self, chunk_id: str) -> ShardPartition:
-        shard_idx = abs(hash(chunk_id)) % self.num_shards
-        return self.shards[shard_idx]
+        shard_id = self.hash_ring.get_shard(chunk_id)
+        return self.shards[shard_id]
 
     def add_document(self, chunk: DocumentChunk, embedding: np.ndarray) -> int:
         shard = self._route(chunk.chunk_id)
@@ -74,12 +74,11 @@ class ShardedVectorIndex:
 
     def search(self, query_vec: np.ndarray, top_k: int = 5, threshold: float = 0.0) -> List[RetrievedChunk]:
         all_results: List[RetrievedChunk] = []
-        # Scatter-gather across partitioned shards
-        for shard in self.shards:
+        for shard in self.shards.values():
             all_results.extend(shard.query(query_vec, top_k=top_k, threshold=threshold))
 
         all_results.sort(key=lambda x: x.similarity_score, reverse=True)
         return all_results[:top_k]
 
     def total_documents(self) -> int:
-        return sum(len(s.chunks) for s in self.shards)
+        return sum(len(s.chunks) for s in self.shards.values())
