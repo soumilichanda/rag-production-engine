@@ -245,3 +245,12 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Dynamic Sharding:** `ConsistentHashRing` in `app/retrieval/consistent_hash.py` with 64–100 virtual replicas per shard.
 - **Partition Stability:** Eliminates catastrophic rehash cascades; adding or removing shards redistributes only $\mathcal{O}(N / K)$ keys without full index migrations.
 - **Lock-Striped Ingestion:** Integrates directly with `ShardedVectorIndex` for concurrent write isolation across virtual partition boundaries.
+
+---
+
+## 🛡️ Phase 26: Distributed Write-Ahead Logging (WAL) & Crash Recovery
+
+- **Component:** `WriteAheadLog` in `app/retrieval/wal.py` and `ShardMutationJournal` in `app/retrieval/wal_journal.py`.
+- **Integrity Frame:** Binary encoded frames with big-endian integer lengths, CRC32 checksum validation, and sequence monotonicity.
+- **Disaster Recovery:** Cold-boot log replay reconstructs sharded index state without re-generating costly dense vector embeddings.
+- **Fail-Safe Invariants:** Automatic truncation of uncommitted mutations and corrupt frame detection with immediate failure containment.
