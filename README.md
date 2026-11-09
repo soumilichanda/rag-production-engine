@@ -254,3 +254,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Integrity Frame:** Binary encoded frames with big-endian integer lengths, CRC32 checksum validation, and sequence monotonicity.
 - **Disaster Recovery:** Cold-boot log replay reconstructs sharded index state without re-generating costly dense vector embeddings.
 - **Fail-Safe Invariants:** Automatic truncation of uncommitted mutations and corrupt frame detection with immediate failure containment.
+
+---
+
+## ⚡ Phase 27: Snapshotting & Log Compaction Engine
+
+- **Component:** `SnapshotEngine` (`app/retrieval/snapshot_engine.py`) and `WALCompactor` (`app/retrieval/wal_compactor.py`).
+- **Atomic Checkpoints:** Serializes memory-resident partition state using transactional tempfile swaps (`os.replace`) to guarantee zero checkpoint corruption.
+- **Log Compaction:** Flushes sequence-bound checkpoints to disk and truncates stale WAL frames, preventing unbounded disk growth while preserving crash recovery invariants.
