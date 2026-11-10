@@ -262,3 +262,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Component:** `SnapshotEngine` (`app/retrieval/snapshot_engine.py`) and `WALCompactor` (`app/retrieval/wal_compactor.py`).
 - **Atomic Checkpoints:** Serializes memory-resident partition state using transactional tempfile swaps (`os.replace`) to guarantee zero checkpoint corruption.
 - **Log Compaction:** Flushes sequence-bound checkpoints to disk and truncates stale WAL frames, preventing unbounded disk growth while preserving crash recovery invariants.
+
+---
+
+## 🛡️ Phase 28: Zero-Downtime WAL Rotation & Segment Retention GC
+
+- **Segmented WAL Engine:** `SegmentedWALWriter` in `app/retrieval/wal_segment.py` segments writes into bounded immutable files (`wal_00001.log`), rolling over automatically under lock upon reaching byte thresholds.
+- **Log Retention Garbage Collection:** `SegmentGarbageCollector` in `app/retrieval/wal_gc.py` inspects checkpoint watermarks in `checkpoint_meta.json` and deletes unneeded archived segments without pausing real-time appends.
+- **Fail-Safe Invariants:** Active tail segments are shielded from eviction, ensuring monotonic replay guarantees across crash recovery boundaries.
