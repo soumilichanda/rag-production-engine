@@ -1,10 +1,10 @@
-﻿"""
+"""
 scripts/export_openapi.py
 Generates an offline, versioned openapi.json specification directly from the FastAPI instance.
 """
 
-import sys
 import json
+import sys
 from pathlib import Path
 
 # Ensure project root is in sys.path

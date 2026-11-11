@@ -1,14 +1,15 @@
-﻿"""
+"""
 app/retrieval/sharded_index.py
 Lock-striped partitioned vector index supporting high-concurrency ingestion,
 consistent-hash ring routing, and scatter-gather retrieval.
 """
 
 import threading
+
 import numpy as np
-from typing import List, Dict, Any, Optional
-from app.schemas.payloads import DocumentChunk, RetrievedChunk
+
 from app.retrieval.consistent_hash import ConsistentHashRing
+from app.schemas.payloads import DocumentChunk, RetrievedChunk
 
 
 class ShardPartition:
@@ -16,7 +17,7 @@ class ShardPartition:
         self.shard_id = shard_id
         self.dimension = dimension
         self.lock = threading.RLock()
-        self.chunks: List[DocumentChunk] = []
+        self.chunks: list[DocumentChunk] = []
         self.embeddings: np.ndarray = np.empty((0, dimension), dtype=np.float32)
 
     def insert(self, chunk: DocumentChunk, embedding: np.ndarray) -> None:
@@ -27,9 +28,13 @@ class ShardPartition:
             if self.embeddings.shape[0] == 0:
                 self.embeddings = np.expand_dims(norm_vec, axis=0).astype(np.float32)
             else:
-                self.embeddings = np.vstack([self.embeddings, norm_vec.astype(np.float32)])
+                self.embeddings = np.vstack(
+                    [self.embeddings, norm_vec.astype(np.float32)]
+                )
 
-    def query(self, query_vec: np.ndarray, top_k: int, threshold: float) -> List[RetrievedChunk]:
+    def query(
+        self, query_vec: np.ndarray, top_k: int, threshold: float
+    ) -> list[RetrievedChunk]:
         with self.lock:
             if self.embeddings.shape[0] == 0:
                 return []
@@ -38,7 +43,7 @@ class ShardPartition:
             q_norm = query_vec / norm if norm > 0 else query_vec
             scores = np.dot(self.embeddings, q_norm)
 
-            candidates: List[RetrievedChunk] = []
+            candidates: list[RetrievedChunk] = []
             for idx, score in enumerate(scores):
                 if score >= threshold:
                     chunk = self.chunks[idx]
@@ -54,12 +59,16 @@ class ShardPartition:
 
 
 class ShardedVectorIndex:
-    def __init__(self, dimension: int = 384, num_shards: int = 8, virtual_replicas: int = 64):
+    def __init__(
+        self, dimension: int = 384, num_shards: int = 8, virtual_replicas: int = 64
+    ):
         self.dimension = dimension
         self.num_shards = num_shards
         shard_ids = list(range(num_shards))
-        self.hash_ring = ConsistentHashRing(shards=shard_ids, virtual_replicas=virtual_replicas)
-        self.shards: Dict[int, ShardPartition] = {
+        self.hash_ring = ConsistentHashRing(
+            shards=shard_ids, virtual_replicas=virtual_replicas
+        )
+        self.shards: dict[int, ShardPartition] = {
             i: ShardPartition(shard_id=i, dimension=dimension) for i in shard_ids
         }
 
@@ -72,8 +81,10 @@ class ShardedVectorIndex:
         shard.insert(chunk, embedding)
         return shard.shard_id
 
-    def search(self, query_vec: np.ndarray, top_k: int = 5, threshold: float = 0.0) -> List[RetrievedChunk]:
-        all_results: List[RetrievedChunk] = []
+    def search(
+        self, query_vec: np.ndarray, top_k: int = 5, threshold: float = 0.0
+    ) -> list[RetrievedChunk]:
+        all_results: list[RetrievedChunk] = []
         for shard in self.shards.values():
             all_results.extend(shard.query(query_vec, top_k=top_k, threshold=threshold))
 

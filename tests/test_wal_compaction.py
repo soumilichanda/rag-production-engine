@@ -1,9 +1,10 @@
-﻿import pytest
 import numpy as np
-from app.retrieval.wal_segment import SegmentedWALWriter
-from app.retrieval.wal_compactor import DynamicSegmentCompactor
-from app.retrieval.sharded_index import ShardedVectorIndex
+import pytest
+
 from app.retrieval.shard_merger import BackgroundShardMerger
+from app.retrieval.sharded_index import ShardedVectorIndex
+from app.retrieval.wal_compactor import DynamicSegmentCompactor
+from app.retrieval.wal_segment import SegmentedWALWriter
 from app.schemas.payloads import DocumentChunk
 
 
@@ -23,7 +24,9 @@ def test_wal_segment_compaction(temp_wal_dir):
     writer.append(SegmentedWALWriter.OP_DELETE, {"chunk_id": "c1"})
     # Forces segment rollover
     writer.append(SegmentedWALWriter.OP_INSERT, {"chunk_id": "c3", "val": "v3"})
-    writer.append(SegmentedWALWriter.OP_INSERT, {"chunk_id": "active_tail", "val": "v4"})
+    writer.append(
+        SegmentedWALWriter.OP_INSERT, {"chunk_id": "active_tail", "val": "v4"}
+    )
 
     segments_before = writer.list_segments()
     assert len(segments_before) >= 3

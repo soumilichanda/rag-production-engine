@@ -270,3 +270,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Segmented WAL Engine:** `SegmentedWALWriter` in `app/retrieval/wal_segment.py` segments writes into bounded immutable files (`wal_00001.log`), rolling over automatically under lock upon reaching byte thresholds.
 - **Log Retention Garbage Collection:** `SegmentGarbageCollector` in `app/retrieval/wal_gc.py` inspects checkpoint watermarks in `checkpoint_meta.json` and deletes unneeded archived segments without pausing real-time appends.
 - **Fail-Safe Invariants:** Active tail segments are shielded from eviction, ensuring monotonic replay guarantees across crash recovery boundaries.
+
+---
+
+## ⚡ Phase 29: Dynamic Segment Compaction & Shard Merging
+
+- **Dynamic WAL Compactor:** `DynamicSegmentCompactor` in `app/retrieval/wal_compactor.py` coalesces historical finalized WAL files, removing tombstones and overwritten payload states to streamline cold-start replay time.
+- **Background Shard Merger:** `BackgroundShardMerger` in `app/retrieval/shard_merger.py` non-blockingly consolidates sparse partitions in `ShardedVectorIndex` under double-lock protection without interrupting read availability.
+- **Frame Invariants:** Compacted logs maintain big-endian 4B length + 4B CRC32 frame checksums, preserving replay consistency and crash isolation.

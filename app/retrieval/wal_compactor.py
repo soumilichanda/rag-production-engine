@@ -2,6 +2,7 @@
 app/retrieval/wal_compactor.py
 Dynamic WAL segment compactor coalescing historical log segments
 and eliminating redundant mutation overhead while retaining CRC32 frame invariants.
+Also preserves backward compatibility for single-log WALCompactor.
 """
 
 import json
@@ -27,7 +28,6 @@ class DynamicSegmentCompactor:
     def compact_segments(self) -> dict[str, Any]:
         with self.lock, self.wal_writer.lock:
             segments = self.wal_writer.list_segments()
-            # Shield active tail segment from compaction
             if len(segments) <= self.min_segments_to_compact:
                 return {
                     "compacted": False,
@@ -52,8 +52,7 @@ class DynamicSegmentCompactor:
                         deleted_chunk_ids.clear()
                         latest_chunk_state.clear()
                     elif op_type == SegmentedWALWriter.OP_INSERT:
-                        if chunk_id in deleted_chunk_ids:
-                            deleted_chunk_ids.remove(chunk_id)
+                        deleted_chunk_ids.discard(chunk_id)
                         latest_chunk_state[chunk_id] = {
                             "seq_id": seq_id,
                             "op_type": op_type,
@@ -66,7 +65,6 @@ class DynamicSegmentCompactor:
             written_records = 0
 
             with open(compacted_file, "wb") as f:
-                # Write back active surviving state ordered by original seq_id
                 surviving = sorted(
                     latest_chunk_state.values(), key=lambda x: x["seq_id"]
                 )
@@ -82,7 +80,6 @@ class DynamicSegmentCompactor:
                 f.flush()
                 os.fsync(f.fileno())
 
-            # Replace first target segment with compacted log and unlink subsequent targets
             first_target_path = self.wal_writer._segment_filename(target_segments[0])
             os.replace(compacted_file, first_target_path)
 
@@ -99,3 +96,22 @@ class DynamicSegmentCompactor:
                 "surviving_records": written_records,
                 "active_segments": self.wal_writer.list_segments(),
             }
+
+
+class WALCompactor:
+    """Legacy backward-compatible adapter linking WriteAheadLog with SnapshotEngine."""
+
+    def __init__(self, wal: Any, snapshot_engine: Any):
+        self.wal = wal
+        self.snapshot_engine = snapshot_engine
+
+    def execute_checkpoint_and_compact(
+        self, current_shards: dict[str, list[str]]
+    ) -> int:
+        with self.wal.lock:
+            latest_seq = self.wal._current_seq
+            if latest_seq == 0:
+                return 0
+            self.snapshot_engine.create_snapshot(latest_seq, current_shards)
+            self.wal.truncate()
+            return latest_seq

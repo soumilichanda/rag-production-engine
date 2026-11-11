@@ -1,5 +1,6 @@
-﻿import pytest
-from httpx import AsyncClient, ASGITransport
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 from app.telemetry.metrics import PrometheusMetricsExporter, metrics_exporter
 

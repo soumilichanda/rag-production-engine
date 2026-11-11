@@ -1,9 +1,9 @@
-﻿import asyncio
 import numpy as np
 import pytest
-from app.schemas.payloads import DocumentChunk
-from app.retrieval.sharded_index import ShardedVectorIndex
+
 from app.ingestion.parallel_ingest import ParallelIngestPipeline
+from app.retrieval.sharded_index import ShardedVectorIndex
+from app.schemas.payloads import DocumentChunk
 
 
 def test_sharded_vector_index_scatter_gather():
@@ -16,8 +16,12 @@ def test_sharded_vector_index_scatter_gather():
     noise_vec = np.zeros(dim, dtype=np.float32)
     noise_vec[1] = 1.0
 
-    chunk_1 = DocumentChunk(chunk_id="chunk_primary", text="Primary high relevance match")
-    chunk_2 = DocumentChunk(chunk_id="chunk_secondary", text="Secondary background chunk")
+    chunk_1 = DocumentChunk(
+        chunk_id="chunk_primary", text="Primary high relevance match"
+    )
+    chunk_2 = DocumentChunk(
+        chunk_id="chunk_secondary", text="Secondary background chunk"
+    )
 
     index.add_document(chunk_1, target_vec)
     index.add_document(chunk_2, noise_vec)
@@ -40,7 +44,9 @@ async def test_concurrent_parallel_ingestion():
 
     dataset = []
     for i in range(100):
-        c = DocumentChunk(chunk_id=f"doc_stream_{i}", text=f"Streaming ingestion benchmark line {i}")
+        c = DocumentChunk(
+            chunk_id=f"doc_stream_{i}", text=f"Streaming ingestion benchmark line {i}"
+        )
         emb = np.random.randn(dim).astype(np.float32)
         dataset.append((c, emb))
 

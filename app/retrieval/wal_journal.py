@@ -1,9 +1,10 @@
-﻿"""
+"""
 app/retrieval/wal_journal.py
 Journal-driven partition synchronizer with cold-boot crash recovery.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from app.retrieval.wal import WriteAheadLog
 
 
@@ -11,7 +12,9 @@ class ShardMutationJournal:
     def __init__(self, wal_path: str = "data/wal.log"):
         self.wal = WriteAheadLog(log_path=wal_path)
 
-    def record_mutation(self, op: str, chunk_id: str, shard_id: str, data: Optional[Dict[str, Any]] = None) -> int:
+    def record_mutation(
+        self, op: str, chunk_id: str, shard_id: str, data: dict[str, Any] | None = None
+    ) -> int:
         op_map = {
             "insert": WriteAheadLog.OP_INSERT,
             "delete": WriteAheadLog.OP_DELETE,
@@ -25,7 +28,7 @@ class ShardMutationJournal:
         }
         return self.wal.append(op_code, payload)
 
-    def recover(self, active_shards: Dict[str, List[str]]) -> int:
+    def recover(self, active_shards: dict[str, list[str]]) -> int:
         replayed_count = 0
         for seq_id, op_type, entry in self.wal.replay_entries():
             shard_id = entry.get("shard_id")

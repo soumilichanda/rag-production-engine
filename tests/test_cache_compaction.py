@@ -1,5 +1,5 @@
-﻿import numpy as np
-import pytest
+import numpy as np
+
 from app.core.semantic_cache import SemanticCache
 
 
@@ -21,6 +21,7 @@ def test_explicit_compact_call():
     cache.put("exp2", vec, {"d": 2})
 
     import time
+
     time.sleep(0.15)
     evicted = cache.compact()
     assert evicted == 2

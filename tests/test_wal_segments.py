@@ -1,7 +1,8 @@
-﻿import pytest
-from app.retrieval.wal_segment import SegmentedWALWriter
-from app.retrieval.wal_gc import SegmentGarbageCollector
+import pytest
+
 from app.retrieval.snapshot_engine import SnapshotEngine
+from app.retrieval.wal_gc import SegmentGarbageCollector
+from app.retrieval.wal_segment import SegmentedWALWriter
 
 
 @pytest.fixture
@@ -17,7 +18,9 @@ def test_monotonic_segment_rollover(temp_segmented_env):
     writer = SegmentedWALWriter(wal_dir=wal_dir, max_segment_bytes=120)
 
     seq1 = writer.append(SegmentedWALWriter.OP_INSERT, {"chunk": "doc_alpha"})
-    seq2 = writer.append(SegmentedWALWriter.OP_INSERT, {"chunk": "doc_beta_with_longer_payload"})
+    seq2 = writer.append(
+        SegmentedWALWriter.OP_INSERT, {"chunk": "doc_beta_with_longer_payload"}
+    )
     seq3 = writer.append(SegmentedWALWriter.OP_INSERT, {"chunk": "doc_gamma"})
 
     segments = writer.list_segments()

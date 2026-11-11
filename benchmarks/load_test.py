@@ -1,4 +1,4 @@
-﻿"""
+"""
 benchmarks/load_test.py
 Synthetic High-Concurrency Load Tester for RAG Gateway.
 Measures p50, p95, p99 latency percentiles, throughput saturation, and cache stability.
@@ -33,11 +33,13 @@ async def worker(queue: asyncio.Queue, latencies: list, client: httpx.AsyncClien
 async def run_benchmark():
     queue = asyncio.Queue()
     for i in range(TOTAL_REQUESTS):
-        await queue.put({
-            "query": f"benchmark retrieval query {i % 10}",
-            "top_k": 3,
-            "score_threshold": 0.0,
-        })
+        await queue.put(
+            {
+                "query": f"benchmark retrieval query {i % 10}",
+                "top_k": 3,
+                "score_threshold": 0.0,
+            }
+        )
 
     latencies = []
     async with httpx.AsyncClient() as client:

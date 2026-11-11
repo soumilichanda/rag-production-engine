@@ -17,10 +17,24 @@ class BackgroundShardMerger:
         self.index = index
         self.min_threshold = min_threshold
 
+    def _get_shard(self, shard_id: int) -> ShardPartition | None:
+        if isinstance(self.index.shards, dict):
+            return self.index.shards.get(shard_id)
+        elif isinstance(self.index.shards, list) and 0 <= shard_id < len(
+            self.index.shards
+        ):
+            return self.index.shards[shard_id]
+        return None
+
     def find_mergeable_shards(self) -> list[int]:
-        mergeable = []
-        for shard_id, partition in self.index.shards.items():
-            if len(partition.chunks) < self.min_threshold and len(partition.chunks) > 0:
+        mergeable: list[int] = []
+        partitions = (
+            self.index.shards.items()
+            if isinstance(self.index.shards, dict)
+            else enumerate(self.index.shards)
+        )
+        for shard_id, partition in partitions:
+            if 0 < len(partition.chunks) < self.min_threshold:
                 mergeable.append(shard_id)
         return mergeable
 
@@ -30,13 +44,12 @@ class BackgroundShardMerger:
         if source_id == target_id:
             return {"status": "skipped", "reason": "identical shards"}
 
-        source_shard: ShardPartition = self.index.shards.get(source_id)
-        target_shard: ShardPartition = self.index.shards.get(target_id)
+        source_shard = self._get_shard(source_id)
+        target_shard = self._get_shard(target_id)
 
-        if not source_shard or not target_shard:
+        if source_shard is None or target_shard is None:
             return {"status": "failed", "reason": "invalid shard IDs"}
 
-        # Non-blocking lock acquisition across both partitions to maintain concurrency safety
         loop = asyncio.get_running_loop()
 
         def _merge_worker() -> int:
@@ -45,12 +58,10 @@ class BackgroundShardMerger:
                 if count == 0:
                     return 0
 
-                # Transfer chunk metadata
                 for c in source_shard.chunks:
                     c.metadata["merged_from"] = source_id
                     target_shard.chunks.append(c)
 
-                # Transfer embeddings matrix
                 if target_shard.embeddings.shape[0] == 0:
                     target_shard.embeddings = source_shard.embeddings.copy()
                 else:
@@ -58,7 +69,6 @@ class BackgroundShardMerger:
                         [target_shard.embeddings, source_shard.embeddings]
                     )
 
-                # Reset source partition
                 source_shard.chunks.clear()
                 source_shard.embeddings = np.empty(
                     (0, source_shard.dimension), dtype=np.float32

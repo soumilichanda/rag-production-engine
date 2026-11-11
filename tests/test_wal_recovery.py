@@ -1,5 +1,7 @@
-﻿import os
+import os
+
 import pytest
+
 from app.retrieval.wal import WriteAheadLog
 from app.retrieval.wal_journal import ShardMutationJournal
 
@@ -32,7 +34,7 @@ def test_wal_crc_corruption_detection(temp_wal_path):
     # Intentionally flip bytes in the payload to simulate disk corruption
     with open(temp_wal_path, "r+b") as f:
         f.seek(-2, os.SEEK_END)
-        f.write(b"\xFF\xFF")
+        f.write(b"\xff\xff")
 
     corrupted_wal = WriteAheadLog(log_path=temp_wal_path)
     with pytest.raises(ValueError, match="CRC32 checksum mismatch"):

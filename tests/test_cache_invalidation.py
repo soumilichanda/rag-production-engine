@@ -1,6 +1,7 @@
-﻿import time
+import time
+
 import numpy as np
-import pytest
+
 from app.core.semantic_cache import SemanticCache
 
 

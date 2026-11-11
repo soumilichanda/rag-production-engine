@@ -1,4 +1,4 @@
-﻿"""
+"""
 app/retrieval/wal_segment.py
 Segmented Write-Ahead Logging (WAL) engine with size-bounded monotonic
 segment rollover, CRC32 checksum frames, and multi-segment replay iterator.
@@ -20,7 +20,11 @@ class SegmentedWALWriter:
     OP_DELETE = 2
     OP_CLEAR = 3
 
-    def __init__(self, wal_dir: str = "data/wal_segments", max_segment_bytes: int = 10 * 1024 * 1024):
+    def __init__(
+        self,
+        wal_dir: str = "data/wal_segments",
+        max_segment_bytes: int = 10 * 1024 * 1024,
+    ):
         self.wal_dir = wal_dir
         self.max_segment_bytes = max_segment_bytes
         os.makedirs(self.wal_dir, exist_ok=True)
@@ -88,7 +92,9 @@ class SegmentedWALWriter:
 
         return seq_id
 
-    def replay_segment(self, segment_idx: int) -> Iterator[tuple[int, int, dict[str, Any]]]:
+    def replay_segment(
+        self, segment_idx: int
+    ) -> Iterator[tuple[int, int, dict[str, Any]]]:
         path = self._segment_filename(segment_idx)
         if not os.path.exists(path):
             return
@@ -99,15 +105,21 @@ class SegmentedWALWriter:
                 if not header_bytes or len(header_bytes) < self.HEADER_STRUCT.size:
                     break
 
-                length, expected_crc, seq_id, op_type = self.HEADER_STRUCT.unpack(header_bytes)
+                length, expected_crc, seq_id, op_type = self.HEADER_STRUCT.unpack(
+                    header_bytes
+                )
                 payload_bytes = f.read(length)
 
                 if len(payload_bytes) != length:
-                    raise ValueError(f"Truncated WAL frame at seq_id={seq_id} in segment {segment_idx}")
+                    raise ValueError(
+                        f"Truncated WAL frame at seq_id={seq_id} in segment {segment_idx}"
+                    )
 
                 computed_crc = zlib.crc32(payload_bytes)
                 if computed_crc != expected_crc:
-                    raise ValueError(f"CRC32 mismatch at seq_id={seq_id} in segment {segment_idx}")
+                    raise ValueError(
+                        f"CRC32 mismatch at seq_id={seq_id} in segment {segment_idx}"
+                    )
 
                 data = json.loads(payload_bytes.decode("utf-8"))
                 yield (seq_id, op_type, data)

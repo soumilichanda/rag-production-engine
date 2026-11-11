@@ -1,21 +1,20 @@
-﻿"""
+"""
 app/retrieval/consistent_hash.py
 Consistent hashing ring with configurable virtual node replication for balanced partition routing.
 """
 
-import hashlib
 import bisect
-from typing import List, Dict, Optional
+import hashlib
 
 
 class ConsistentHashRing:
     """A consistent hash ring distributing partition assignments evenly via virtual nodes."""
 
-    def __init__(self, shards: List[int], virtual_replicas: int = 100):
+    def __init__(self, shards: list[int], virtual_replicas: int = 100):
         self.virtual_replicas = virtual_replicas
-        self.ring: List[int] = []
-        self.ring_to_shard: Dict[int, int] = {}
-        self.shards: List[int] = []
+        self.ring: list[int] = []
+        self.ring_to_shard: dict[int, int] = {}
+        self.shards: list[int] = []
 
         for shard_id in shards:
             self.add_shard(shard_id)

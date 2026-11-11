@@ -1,9 +1,10 @@
-﻿import numpy as np
-import pytest
 from collections import Counter
-from app.schemas.payloads import DocumentChunk
+
+import numpy as np
+
 from app.retrieval.consistent_hash import ConsistentHashRing
 from app.retrieval.sharded_index import ShardedVectorIndex
+from app.schemas.payloads import DocumentChunk
 
 
 def test_consistent_hash_uniformity():
