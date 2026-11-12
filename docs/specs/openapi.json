@@ -445,6 +445,25 @@
           }
         }
       }
+    },
+    "/v1/health/deep": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Deep Health Checkpoint",
+        "operationId": "deep_health_checkpoint_v1_health_deep_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

@@ -278,3 +278,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Dynamic WAL Compactor:** `DynamicSegmentCompactor` in `app/retrieval/wal_compactor.py` coalesces historical finalized WAL files, removing tombstones and overwritten payload states to streamline cold-start replay time.
 - **Background Shard Merger:** `BackgroundShardMerger` in `app/retrieval/shard_merger.py` non-blockingly consolidates sparse partitions in `ShardedVectorIndex` under double-lock protection without interrupting read availability.
 - **Frame Invariants:** Compacted logs maintain big-endian 4B length + 4B CRC32 frame checksums, preserving replay consistency and crash isolation.
+
+---
+
+## 🛡️ Phase 30: Distributed Health Checkpoints, Circuit Breaker & Graceful Drain
+
+- **Circuit Breaker (`app/resilience/circuit_breaker.py`):** Three-state asynchronous `AsyncCircuitBreaker` (`CLOSED` -> `OPEN` -> `HALF_OPEN`) with failure thresholds, cooldown windows, and bounded recovery probing to prevent cascading upstream failures.
+- **Zero-Drop Drain (`app/resilience/drain_manager.py`):** `GracefulDrainManager` tracks in-flight request slots, halts new admission during shutdown, and awaits active tasks before flushing WAL state.
+- **Deep Health Checkpoint:** Exposes `GET /v1/health/deep` reporting live circuit breaker state and traffic admission readiness.
