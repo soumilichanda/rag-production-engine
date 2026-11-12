@@ -4,6 +4,8 @@ from fastapi.responses import PlainTextResponse
 
 from app.core.semantic_cache import SemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
+from app.resilience.circuit_breaker import AsyncCircuitBreaker
+from app.resilience.drain_manager import GracefulDrainManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
@@ -281,3 +283,21 @@ async def invalidate_cache(payload: CacheInvalidationRequest):
 async def compact_cache():
     freed = semantic_cache.compact()
     return {"status": "ok", "entries_evicted": freed, "stats": semantic_cache.stats()}
+
+
+upstream_breaker = AsyncCircuitBreaker(
+    name="upstream-reranker-embedder", failure_threshold=3, recovery_timeout=15.0
+)
+drain_manager = GracefulDrainManager()
+
+
+@app.get("/v1/health/deep", tags=["Health"])
+async def deep_health_checkpoint():
+    breaker_state = upstream_breaker.snapshot()
+    drain_state = drain_manager.status()
+    healthy = breaker_state["state"] != "OPEN" and drain_state["accepting_traffic"]
+    return {
+        "status": "healthy" if healthy else "degraded",
+        "circuit_breaker": breaker_state,
+        "traffic_drain": drain_state,
+    }
