@@ -286,3 +286,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Circuit Breaker (`app/resilience/circuit_breaker.py`):** Three-state asynchronous `AsyncCircuitBreaker` (`CLOSED` -> `OPEN` -> `HALF_OPEN`) with failure thresholds, cooldown windows, and bounded recovery probing to prevent cascading upstream failures.
 - **Zero-Drop Drain (`app/resilience/drain_manager.py`):** `GracefulDrainManager` tracks in-flight request slots, halts new admission during shutdown, and awaits active tasks before flushing WAL state.
 - **Deep Health Checkpoint:** Exposes `GET /v1/health/deep` reporting live circuit breaker state and traffic admission readiness.
+
+---
+
+## ⚡ Phase 31: Adaptive Retry Backoff, Request Hedging & Load Shedding
+
+- **Full-Jitter Exponential Backoff (`app/resilience/adaptive_retry.py`):** `DecorrelatedJitterRetry` randomizes retry sleep intervals across $[0, \min(\text{cap}, \text{base} \cdot 2^{\text{attempt}})]$ to eliminate synchronized retry thundering herds.
+- **Speculative Request Hedging (`app/resilience/adaptive_retry.py`):** `HedgedRequestExecutor` dispatches a backup request when primary latency crosses `hedge_delay_sec`, racing both tasks and cancelling the straggler upon first completion.
+- **Concurrency Load Shedding (`app/resilience/load_shedder.py`):** `ConcurrencyLoadShedder` caps active in-flight requests and sheds excess load immediately under saturation, exposed via `GET /v1/resilience/stats`.

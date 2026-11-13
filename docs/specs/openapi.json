@@ -464,6 +464,25 @@
           }
         }
       }
+    },
+    "/v1/resilience/stats": {
+      "get": {
+        "tags": [
+          "Resilience"
+        ],
+        "summary": "Get Resilience Stats",
+        "operationId": "get_resilience_stats_v1_resilience_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
