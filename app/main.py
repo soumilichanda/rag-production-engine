@@ -4,8 +4,10 @@ from fastapi.responses import PlainTextResponse
 
 from app.core.semantic_cache import SemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
+from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequestExecutor
 from app.resilience.circuit_breaker import AsyncCircuitBreaker
 from app.resilience.drain_manager import GracefulDrainManager
+from app.resilience.load_shedder import ConcurrencyLoadShedder
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
@@ -300,4 +302,28 @@ async def deep_health_checkpoint():
         "status": "healthy" if healthy else "degraded",
         "circuit_breaker": breaker_state,
         "traffic_drain": drain_state,
+    }
+
+
+retry_policy = DecorrelatedJitterRetry(
+    max_attempts=3, base_delay_sec=0.05, max_delay_sec=1.0
+)
+hedged_executor = HedgedRequestExecutor(hedge_delay_sec=0.04)
+load_shedder = ConcurrencyLoadShedder(max_concurrent=64)
+
+
+@app.get("/v1/resilience/stats", tags=["Resilience"])
+async def get_resilience_stats():
+    return {
+        "status": "operational",
+        "load_shedder": load_shedder.stats(),
+        "retry_policy": {
+            "max_attempts": retry_policy.max_attempts,
+            "total_retries": retry_policy.total_retries,
+        },
+        "hedged_executor": {
+            "hedge_delay_sec": hedged_executor.hedge_delay_sec,
+            "hedges_triggered": hedged_executor.hedges_triggered,
+            "hedges_won": hedged_executor.hedges_won,
+        },
     }
