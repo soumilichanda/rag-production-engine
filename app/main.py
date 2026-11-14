@@ -1,6 +1,7 @@
 from typing import Any
 
-from fastapi.responses import PlainTextResponse
+from fastapi import Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.core.semantic_cache import SemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
@@ -8,6 +9,7 @@ from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequest
 from app.resilience.circuit_breaker import AsyncCircuitBreaker
 from app.resilience.drain_manager import GracefulDrainManager
 from app.resilience.load_shedder import ConcurrencyLoadShedder
+from app.resilience.rate_limiter import HierarchicalQuotaManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
@@ -327,3 +329,45 @@ async def get_resilience_stats():
             "hedges_won": hedged_executor.hedges_won,
         },
     }
+
+
+quota_manager = HierarchicalQuotaManager(
+    default_tenant_capacity=20,
+    default_tenant_refill_rate=5.0,
+    global_capacity=200,
+    global_refill_rate=50.0,
+)
+
+
+@app.middleware("http")
+async def enforce_tenant_quota(request: Request, call_next):
+    path = request.url.path
+    if path.startswith(("/v1/retrieve", "/v1/generate")):
+        tenant_id = request.headers.get("X-Tenant-ID", "default")
+        decision = quota_manager.evaluate(tenant_id=tenant_id)
+        if not decision.allowed:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={
+                    "detail": "Rate limit exceeded for tenant quota",
+                    "tenant_id": decision.tenant_id,
+                    "scope": decision.scope,
+                    "retry_after": decision.retry_after,
+                },
+                headers={
+                    "Retry-After": str(max(1, round(decision.retry_after))),
+                    "X-RateLimit-Limit": str(decision.limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-Quota-Scope": decision.scope,
+                },
+            )
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(decision.limit)
+        response.headers["X-RateLimit-Remaining"] = str(decision.remaining)
+        return response
+    return await call_next(request)
+
+
+@app.get("/v1/resilience/quotas", tags=["Resilience"])
+async def get_resilience_quotas():
+    return quota_manager.stats()
