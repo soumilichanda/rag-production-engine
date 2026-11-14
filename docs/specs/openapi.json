@@ -483,6 +483,25 @@
           }
         }
       }
+    },
+    "/v1/resilience/quotas": {
+      "get": {
+        "tags": [
+          "Resilience"
+        ],
+        "summary": "Get Resilience Quotas",
+        "operationId": "get_resilience_quotas_v1_resilience_quotas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

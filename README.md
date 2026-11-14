@@ -294,3 +294,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Full-Jitter Exponential Backoff (`app/resilience/adaptive_retry.py`):** `DecorrelatedJitterRetry` randomizes retry sleep intervals across $[0, \min(\text{cap}, \text{base} \cdot 2^{\text{attempt}})]$ to eliminate synchronized retry thundering herds.
 - **Speculative Request Hedging (`app/resilience/adaptive_retry.py`):** `HedgedRequestExecutor` dispatches a backup request when primary latency crosses `hedge_delay_sec`, racing both tasks and cancelling the straggler upon first completion.
 - **Concurrency Load Shedding (`app/resilience/load_shedder.py`):** `ConcurrencyLoadShedder` caps active in-flight requests and sheds excess load immediately under saturation, exposed via `GET /v1/resilience/stats`.
+
+### Phase 32: Token-Bucket Rate Limiting & Per-Tenant Quota Governance
+- **Hierarchical Limiter**: Implemented monotonic `TokenBucket` and `HierarchicalQuotaManager` (`app/resilience/rate_limiter.py`) enforcing isolated per-tenant burst budgets alongside a global system token ceiling.
+- **Gateway Enforcement**: Added HTTP rate-limiting middleware returning **HTTP 429 Too Many Requests** with `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers.
+- **Quota Telemetry**: Mounted `GET /v1/resilience/quotas` for live tenant bucket capacity and replenishment inspection.
