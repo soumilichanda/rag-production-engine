@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from app.core.semantic_cache import SemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
 from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequestExecutor
+from app.resilience.canary_router import CanaryTrafficRouter
+from app.resilience.chaos import ChaosFaultInjector, ChaosInjectedError
 from app.resilience.circuit_breaker import AsyncCircuitBreaker
 from app.resilience.drain_manager import GracefulDrainManager
 from app.resilience.load_shedder import ConcurrencyLoadShedder
@@ -371,3 +373,52 @@ async def enforce_tenant_quota(request: Request, call_next):
 @app.get("/v1/resilience/quotas", tags=["Resilience"])
 async def get_resilience_quotas():
     return quota_manager.stats()
+
+
+chaos_injector = ChaosFaultInjector(enabled=False, error_rate=0.0, latency_ms=0.0)
+canary_router = CanaryTrafficRouter(canary_weight_pct=10)
+
+
+@app.middleware("http")
+async def chaos_and_canary_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith(("/v1/retrieve", "/v1/generate")):
+        tenant_id = request.headers.get("X-Tenant-ID", "default")
+        force_track = request.headers.get("X-Canary-Force")
+        chaos_directive = request.headers.get("X-Chaos-Inject")
+
+        track = canary_router.select_track(
+            routing_key=tenant_id, force_track=force_track
+        )
+        try:
+            chaos_applied = await chaos_injector.maybe_inject(
+                header_directive=chaos_directive
+            )
+        except ChaosInjectedError as exc:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": str(exc),
+                    "serving_track": track,
+                    "chaos_injected": True,
+                },
+                headers={
+                    "X-Serving-Track": track,
+                    "X-Chaos-Applied": "error",
+                },
+            )
+
+        response = await call_next(request)
+        response.headers["X-Serving-Track"] = track
+        if chaos_applied:
+            response.headers["X-Chaos-Applied"] = chaos_applied
+        return response
+    return await call_next(request)
+
+
+@app.get("/v1/resilience/canary", tags=["Resilience"])
+async def get_canary_and_chaos_telemetry():
+    return {
+        "canary_router": canary_router.stats(),
+        "chaos_injector": chaos_injector.stats(),
+    }
