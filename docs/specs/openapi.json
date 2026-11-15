@@ -502,6 +502,25 @@
           }
         }
       }
+    },
+    "/v1/resilience/canary": {
+      "get": {
+        "tags": [
+          "Resilience"
+        ],
+        "summary": "Get Canary And Chaos Telemetry",
+        "operationId": "get_canary_and_chaos_telemetry_v1_resilience_canary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

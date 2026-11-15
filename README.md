@@ -299,3 +299,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Hierarchical Limiter**: Implemented monotonic `TokenBucket` and `HierarchicalQuotaManager` (`app/resilience/rate_limiter.py`) enforcing isolated per-tenant burst budgets alongside a global system token ceiling.
 - **Gateway Enforcement**: Added HTTP rate-limiting middleware returning **HTTP 429 Too Many Requests** with `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers.
 - **Quota Telemetry**: Mounted `GET /v1/resilience/quotas` for live tenant bucket capacity and replenishment inspection.
+
+### Phase 33: Chaos Fault Injection & Canary Traffic Splitting
+- **Chaos Fault Injector**: Implemented `ChaosFaultInjector` (`app/resilience/chaos.py`) supporting probabilistic error rates, bounded latency delays, and header-triggered fault overrides (`X-Chaos-Inject: latency|error`).
+- **Weighted Canary Router**: Implemented `CanaryTrafficRouter` (`app/resilience/canary_router.py`) providing sticky SHA-256 tenant bucketing between `stable` and `canary` tracks with `X-Serving-Track` response headers.
+- **Resilience Telemetry**: Mounted `GET /v1/resilience/canary` exposing live canary distribution ratios and chaos fault counters.
