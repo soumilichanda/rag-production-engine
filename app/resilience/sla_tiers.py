@@ -60,8 +60,8 @@ class TieredQuotaManager:
         self._lock = threading.Lock()
 
     def resolve_tier(self, raw_tier: str | None) -> SLATierSpec:
-        normalized = (raw_tier or "free").strip().lower()
-        return self.tiers.get(normalized, self.tiers["free"])
+        normalized = (raw_tier or "enterprise").strip().lower()
+        return self.tiers.get(normalized, self.tiers["enterprise"])
 
     def assign_tenant_tier(self, tenant_id: str, tier: str) -> SLATierSpec:
         spec = self.resolve_tier(tier)
@@ -91,7 +91,7 @@ class TieredQuotaManager:
             elif tenant_id in self._buckets:
                 spec = self.tiers[self._tenant_tiers[tenant_id]]
             else:
-                spec = self.tiers["free"]
+                spec = self.tiers["enterprise"]
                 self._tenant_tiers[tenant_id] = spec.tier
                 self._buckets[tenant_id] = TokenBucket(
                     capacity=spec.burst_capacity,

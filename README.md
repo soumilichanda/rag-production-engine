@@ -304,3 +304,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Chaos Fault Injector**: Implemented `ChaosFaultInjector` (`app/resilience/chaos.py`) supporting probabilistic error rates, bounded latency delays, and header-triggered fault overrides (`X-Chaos-Inject: latency|error`).
 - **Weighted Canary Router**: Implemented `CanaryTrafficRouter` (`app/resilience/canary_router.py`) providing sticky SHA-256 tenant bucketing between `stable` and `canary` tracks with `X-Serving-Track` response headers.
 - **Resilience Telemetry**: Mounted `GET /v1/resilience/canary` exposing live canary distribution ratios and chaos fault counters.
+
+### Phase 34: Distributed Rate-Limit Quota Persistence & Multi-Tenant SLA Tiers
+- **Tiered SLA Quota Manager (`app/resilience/sla_tiers.py`):** Maps `free`, `pro`, and `enterprise` tenant profiles (`X-Tenant-Tier`) to differentiated burst capacities (`3` / `20` / `100`), token refill rates (`1.0` / `10.0` / `50.0` tokens/s), and maximum `top_k` retrieval caps (`3` / `10` / `50`).
+- **Gateway SLA Enforcement (`app/main.py`):** Enforces tier `top_k` depth ceilings (`HTTP 403`) and isolated token budgets (`HTTP 429` with `Retry-After`), emitting `X-Tenant-Tier`, `X-SLA-Max-TopK`, `X-SLA-Limit`, and `X-SLA-Remaining` headers.
+- **SLA Telemetry:** Mounted `GET /v1/resilience/sla` exposing tier profiles and live per-tenant quota consumption.

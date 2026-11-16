@@ -521,6 +521,25 @@
           }
         }
       }
+    },
+    "/v1/resilience/sla": {
+      "get": {
+        "tags": [
+          "Resilience"
+        ],
+        "summary": "Get Resilience Sla",
+        "operationId": "get_resilience_sla_v1_resilience_sla_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
