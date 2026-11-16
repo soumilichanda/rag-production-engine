@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from fastapi import Request
@@ -12,6 +13,7 @@ from app.resilience.circuit_breaker import AsyncCircuitBreaker
 from app.resilience.drain_manager import GracefulDrainManager
 from app.resilience.load_shedder import ConcurrencyLoadShedder
 from app.resilience.rate_limiter import HierarchicalQuotaManager
+from app.resilience.sla_tiers import TieredQuotaManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
@@ -421,4 +423,76 @@ async def get_canary_and_chaos_telemetry():
     return {
         "canary_router": canary_router.stats(),
         "chaos_injector": chaos_injector.stats(),
+    }
+
+
+sla_manager = TieredQuotaManager()
+
+
+@app.middleware("http")
+async def enforce_tenant_sla_tier(request: Request, call_next):
+    path = request.url.path
+    if path.startswith(("/v1/retrieve", "/v1/pipeline")):
+        tenant_id = request.headers.get("X-Tenant-ID", "default")
+        requested_tier = request.headers.get("X-Tenant-Tier")
+        decision = sla_manager.evaluate(
+            tenant_id=tenant_id, tier=requested_tier, cost=1.0
+        )
+
+        sla_headers = {
+            "X-Tenant-Tier": decision.tier,
+            "X-SLA-Max-TopK": str(decision.max_top_k),
+            "X-SLA-Limit": str(decision.limit),
+            "X-SLA-Remaining": str(decision.remaining),
+        }
+
+        if not decision.allowed:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={
+                    "detail": "SLA tier token budget exceeded",
+                    "tenant_id": decision.tenant_id,
+                    "tier": decision.tier,
+                    "retry_after": decision.retry_after,
+                },
+                headers={
+                    **sla_headers,
+                    "Retry-After": str(max(1, round(decision.retry_after))),
+                },
+            )
+
+        if request.method == "POST":
+            body_bytes = await request.body()
+            if body_bytes:
+                try:
+                    payload = json.loads(body_bytes)
+                    if isinstance(payload, dict) and "top_k" in payload:
+                        requested_top_k = int(payload["top_k"])
+                        if requested_top_k > decision.max_top_k:
+                            return JSONResponse(
+                                status_code=status.HTTP_403_FORBIDDEN,
+                                content={
+                                    "detail": f"Requested top_k={requested_top_k} exceeds {decision.tier} tier cap ({decision.max_top_k})",
+                                    "tenant_id": decision.tenant_id,
+                                    "tier": decision.tier,
+                                    "max_top_k": decision.max_top_k,
+                                },
+                                headers=sla_headers,
+                            )
+                except (ValueError, TypeError):
+                    pass
+
+        response = await call_next(request)
+        for k, v in sla_headers.items():
+            response.headers[k] = v
+        return response
+
+    return await call_next(request)
+
+
+@app.get("/v1/resilience/sla", tags=["Resilience"])
+async def get_resilience_sla():
+    return {
+        "status": "operational",
+        "sla": sla_manager.stats(),
     }
