@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.core.semantic_cache import SemanticCache
+from app.core.tenant_semantic_cache import TenantSemanticCache
 from app.evaluation.faithfulness import FaithfulnessEvaluator
 from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequestExecutor
 from app.resilience.canary_router import CanaryTrafficRouter
@@ -48,6 +49,8 @@ class GenerationResponse(BaseModel):
     retrieved_count: int = 0
     latency_ms: float = 0.0
 
+
+tenant_semantic_cache = TenantSemanticCache()
 
 app = FastAPI(
     title="Production RAG Engine",
@@ -496,3 +499,16 @@ async def get_resilience_sla():
         "status": "operational",
         "sla": sla_manager.stats(),
     }
+
+
+@app.get("/v1/cache/telemetry", tags=["Cache"])
+async def get_tenant_cache_telemetry():
+    """Return per-tenant semantic cache hit rates, active entries, and tier TTL policies."""
+    return tenant_semantic_cache.telemetry()
+
+
+@app.delete("/v1/cache/tenant/{tenant_id}", tags=["Cache"])
+async def purge_tenant_cache(tenant_id: str):
+    """Evict all cached semantic entries belonging strictly to the specified tenant namespace."""
+    evicted = tenant_semantic_cache.invalidate_tenant(tenant_id)
+    return {"tenant_id": tenant_id, "evicted_entries": evicted}
