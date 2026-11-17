@@ -309,3 +309,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Tiered SLA Quota Manager (`app/resilience/sla_tiers.py`):** Maps `free`, `pro`, and `enterprise` tenant profiles (`X-Tenant-Tier`) to differentiated burst capacities (`3` / `20` / `100`), token refill rates (`1.0` / `10.0` / `50.0` tokens/s), and maximum `top_k` retrieval caps (`3` / `10` / `50`).
 - **Gateway SLA Enforcement (`app/main.py`):** Enforces tier `top_k` depth ceilings (`HTTP 403`) and isolated token budgets (`HTTP 429` with `Retry-After`), emitting `X-Tenant-Tier`, `X-SLA-Max-TopK`, `X-SLA-Limit`, and `X-SLA-Remaining` headers.
 - **SLA Telemetry:** Mounted `GET /v1/resilience/sla` exposing tier profiles and live per-tenant quota consumption.
+
+### Phase 35: Semantic Query Caching with Tenant Namespace Isolation & Adaptive SLA TTL
+- **Tenant-Scoped Semantic Cache (`app/core/tenant_semantic_cache.py`):** Partitions cached query embeddings and payloads by `tenant_id` (`OrderedDict` LRU per namespace), guaranteeing zero cross-tenant data leakage.
+- **Tier-Adaptive TTL & Capacity Policies:** Enforces differentiated TTL windows and entry caps across `free` (`30s` / `16` entries), `pro` (`300s` / `128` entries), and `enterprise` (`3600s` / `1024` entries) SLA tiers.
+- **Cache Telemetry & Purge Routes (`app/main.py`):** Mounted `GET /v1/cache/telemetry` for per-tenant hit-rate observability and `DELETE /v1/cache/tenant/{tenant_id}` for scoped namespace invalidation.

@@ -540,6 +540,67 @@
           }
         }
       }
+    },
+    "/v1/cache/telemetry": {
+      "get": {
+        "tags": [
+          "Cache"
+        ],
+        "summary": "Get Tenant Cache Telemetry",
+        "description": "Return per-tenant semantic cache hit rates, active entries, and tier TTL policies.",
+        "operationId": "get_tenant_cache_telemetry_v1_cache_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cache/tenant/{tenant_id}": {
+      "delete": {
+        "tags": [
+          "Cache"
+        ],
+        "summary": "Purge Tenant Cache",
+        "description": "Evict all cached semantic entries belonging strictly to the specified tenant namespace.",
+        "operationId": "purge_tenant_cache_v1_cache_tenant__tenant_id__delete",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
