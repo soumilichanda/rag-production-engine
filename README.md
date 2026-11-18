@@ -314,3 +314,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Tenant-Scoped Semantic Cache (`app/core/tenant_semantic_cache.py`):** Partitions cached query embeddings and payloads by `tenant_id` (`OrderedDict` LRU per namespace), guaranteeing zero cross-tenant data leakage.
 - **Tier-Adaptive TTL & Capacity Policies:** Enforces differentiated TTL windows and entry caps across `free` (`30s` / `16` entries), `pro` (`300s` / `128` entries), and `enterprise` (`3600s` / `1024` entries) SLA tiers.
 - **Cache Telemetry & Purge Routes (`app/main.py`):** Mounted `GET /v1/cache/telemetry` for per-tenant hit-rate observability and `DELETE /v1/cache/tenant/{tenant_id}` for scoped namespace invalidation.
+
+### Phase 36: Streaming Token Budget Accounting & Real-Time Cost Attribution
+- **Token & Cost Ledger (`app/core/token_billing.py`):** Thread-safe `TokenCostLedger` attributing prompt tokens, completion tokens, stream request counts, and model-weighted USD spend per `tenant_id`.
+- **Metered SSE Gateway (`app/main.py`):** Wraps `POST /v1/pipeline/stream` responses to meter prompt context + emitted SSE token frames in real time without blocking chunk delivery.
+- **Billing Telemetry Endpoints:** Exposes `GET /v1/billing/usage` and `GET /v1/billing/usage/{tenant_id}` for real-time cost and token rollups.

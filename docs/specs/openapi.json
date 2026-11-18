@@ -601,6 +601,67 @@
           }
         }
       }
+    },
+    "/v1/billing/usage": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get All Billing Usage",
+        "description": "Return real-time prompt/completion token consumption and USD cost rollups across all tenants.",
+        "operationId": "get_all_billing_usage_v1_billing_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{tenant_id}": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Tenant Billing Usage",
+        "description": "Return streaming token usage and estimated USD cost for a single tenant.",
+        "operationId": "get_tenant_billing_usage_v1_billing_usage__tenant_id__get",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
