@@ -56,7 +56,7 @@ class TokenCostLedger:
         if not stripped:
             return 0
         # Deterministic subword-aware approximation (~1.3 tokens/word)
-        return max(1, int(round(len(stripped.split()) * 1.3)))
+        return max(1, round(len(stripped.split()) * 1.3))
 
     def record_stream_usage(
         self,
