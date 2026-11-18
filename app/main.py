@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.core.semantic_cache import SemanticCache
 from app.core.tenant_semantic_cache import TenantSemanticCache
+from app.core.token_billing import TokenCostLedger
 from app.evaluation.faithfulness import FaithfulnessEvaluator
 from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequestExecutor
 from app.resilience.canary_router import CanaryTrafficRouter
@@ -51,6 +52,7 @@ class GenerationResponse(BaseModel):
 
 
 tenant_semantic_cache = TenantSemanticCache()
+token_cost_ledger = TokenCostLedger()
 
 app = FastAPI(
     title="Production RAG Engine",
@@ -238,14 +240,32 @@ from app.generation.streamer import StreamingContextSynthesizer
 
 
 @app.post("/v1/pipeline/stream", tags=["Generation"])
-async def stream_generation_pipeline(request: QueryRequest):
+async def stream_generation_pipeline(request: QueryRequest, raw_request: Request):
     candidates, _ = store.query(
         dummy_text_to_embedding(request.query), top_k=request.top_k * 2, threshold=-1.0
     )
     reranked = cross_encoder.rerank(request.query, candidates, top_k=request.top_k)
     synthesizer = StreamingContextSynthesizer()
+    tenant_id = raw_request.headers.get("X-Tenant-ID", "default").strip() or "default"
+    prompt_tokens = token_cost_ledger.estimate_tokens(request.query) + sum(
+        token_cost_ledger.estimate_tokens(c.text) for c in reranked
+    )
+
+    async def _metered_sse_stream():
+        completion_chunks = []
+        async for frame in synthesizer.stream_response(request.query, reranked):
+            if '"event": "token"' in frame or '"token"' in frame:
+                completion_chunks.append(frame)
+            yield frame
+        completion_tokens = max(len(completion_chunks), 1)
+        token_cost_ledger.record_stream_usage(
+            tenant_id=tenant_id,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
     return StreamingResponse(
-        synthesizer.stream_response(request.query, reranked),
+        _metered_sse_stream(),
         media_type="text/event-stream",
     )
 
@@ -512,3 +532,16 @@ async def purge_tenant_cache(tenant_id: str):
     """Evict all cached semantic entries belonging strictly to the specified tenant namespace."""
     evicted = tenant_semantic_cache.invalidate_tenant(tenant_id)
     return {"tenant_id": tenant_id, "evicted_entries": evicted}
+
+
+# --- Phase 36: Streaming Token Budget Accounting & Real-Time Cost Attribution ---
+@app.get("/v1/billing/usage", tags=["Billing"])
+async def get_all_billing_usage():
+    """Return real-time prompt/completion token consumption and USD cost rollups across all tenants."""
+    return token_cost_ledger.get_all_usage()
+
+
+@app.get("/v1/billing/usage/{tenant_id}", tags=["Billing"])
+async def get_tenant_billing_usage(tenant_id: str):
+    """Return streaming token usage and estimated USD cost for a single tenant."""
+    return token_cost_ledger.get_tenant_usage(tenant_id)
