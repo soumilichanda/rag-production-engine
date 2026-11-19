@@ -250,6 +250,37 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
     prompt_tokens = token_cost_ledger.estimate_tokens(request.query) + sum(
         token_cost_ledger.estimate_tokens(c.text) for c in reranked
     )
+    projected_prompt_cost = token_cost_ledger.estimate_cost(
+        prompt_tokens=prompt_tokens, completion_tokens=1
+    )
+    budget_eval = token_cost_ledger.check_budget_available(
+        tenant_id=tenant_id,
+        projected_cost_usd=projected_prompt_cost,
+    )
+    if not budget_eval.allowed:
+        return JSONResponse(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            content={
+                "detail": "Tenant USD spend cap exhausted",
+                "tenant_id": tenant_id,
+                "spent_usd": budget_eval.spent_usd,
+                "spend_cap_usd": budget_eval.spend_cap_usd,
+                "remaining_usd": budget_eval.remaining_usd,
+            },
+            headers={
+                "X-Billing-Remaining-USD": f"{budget_eval.remaining_usd or 0.0:.6f}",
+                "X-Billing-Spend-Cap-USD": f"{budget_eval.spend_cap_usd or 0.0:.6f}",
+            },
+        )
+
+    remaining_after_prompt = (
+        f"{max(0.0, (budget_eval.remaining_usd or 0.0) - projected_prompt_cost):.6f}"
+        if budget_eval.remaining_usd is not None
+        else "unlimited"
+    )
+    stream_headers = {"X-Billing-Remaining-USD": remaining_after_prompt}
+    if budget_eval.spend_cap_usd is not None:
+        stream_headers["X-Billing-Spend-Cap-USD"] = f"{budget_eval.spend_cap_usd:.6f}"
 
     async def _metered_sse_stream():
         completion_chunks = []
@@ -267,6 +298,7 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
     return StreamingResponse(
         _metered_sse_stream(),
         media_type="text/event-stream",
+        headers=stream_headers,
     )
 
 
@@ -545,3 +577,33 @@ async def get_all_billing_usage():
 async def get_tenant_billing_usage(tenant_id: str):
     """Return streaming token usage and estimated USD cost for a single tenant."""
     return token_cost_ledger.get_tenant_usage(tenant_id)
+
+
+# --- Phase 37: Tenant Spend Caps, Budget Alerts & Automated Quota Enforcement ---
+class TenantBudgetRequest(BaseModel):
+    spend_cap_usd: float = Field(
+        ..., ge=0.0, description="Maximum allowed USD spend for this tenant"
+    )
+    alert_threshold_ratio: float = Field(
+        default=0.80,
+        gt=0.0,
+        le=1.0,
+        description="Utilization fraction (0.0-1.0] that triggers a budget warning alert",
+    )
+
+
+@app.post("/v1/billing/budgets/{tenant_id}", tags=["Billing"])
+async def configure_tenant_billing_budget(tenant_id: str, payload: TenantBudgetRequest):
+    """Configure a hard USD spend cap and warning alert threshold for a tenant."""
+    return token_cost_ledger.set_tenant_budget(
+        tenant_id=tenant_id,
+        spend_cap_usd=payload.spend_cap_usd,
+        alert_threshold_ratio=payload.alert_threshold_ratio,
+    )
+
+
+@app.get("/v1/billing/alerts", tags=["Billing"])
+async def get_billing_budget_alerts():
+    """Return triggered tenant budget warning and exhaustion alerts."""
+    alerts = token_cost_ledger.get_alerts()
+    return {"count": len(alerts), "alerts": alerts}
