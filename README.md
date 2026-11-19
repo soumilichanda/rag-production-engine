@@ -319,3 +319,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Token & Cost Ledger (`app/core/token_billing.py`):** Thread-safe `TokenCostLedger` attributing prompt tokens, completion tokens, stream request counts, and model-weighted USD spend per `tenant_id`.
 - **Metered SSE Gateway (`app/main.py`):** Wraps `POST /v1/pipeline/stream` responses to meter prompt context + emitted SSE token frames in real time without blocking chunk delivery.
 - **Billing Telemetry Endpoints:** Exposes `GET /v1/billing/usage` and `GET /v1/billing/usage/{tenant_id}` for real-time cost and token rollups.
+
+### Phase 37: Tenant Spend Caps, Budget Alerts & Automated Quota Enforcement
+- **Per-Tenant USD Spend Caps (`app/core/token_billing.py`):** Extended `TokenCostLedger` with `TenantBudgetPolicy`, pre-flight budget admission checks (`check_budget_available`), and automatic warning threshold alerts (default `80%` utilization).
+- **HTTP 402 Gateway Enforcement (`app/main.py`):** Emits `X-Billing-Remaining-USD` and `X-Billing-Spend-Cap-USD` headers on metered SSE streams and halts over-budget requests with `HTTP 402 Payment Required`.
+- **Budget Governance Endpoints:** Mounted `POST /v1/billing/budgets/{tenant_id}` and `GET /v1/billing/alerts` for live spend ceiling configuration and alert inspection.

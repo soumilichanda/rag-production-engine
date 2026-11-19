@@ -662,6 +662,77 @@
           }
         }
       }
+    },
+    "/v1/billing/budgets/{tenant_id}": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Configure Tenant Billing Budget",
+        "description": "Configure a hard USD spend cap and warning alert threshold for a tenant.",
+        "operationId": "configure_tenant_billing_budget_v1_billing_budgets__tenant_id__post",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantBudgetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/alerts": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Billing Budget Alerts",
+        "description": "Return triggered tenant budget warning and exhaustion alerts.",
+        "operationId": "get_billing_budget_alerts_v1_billing_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1001,6 +1072,29 @@
           "similarity_score"
         ],
         "title": "RetrievedChunk"
+      },
+      "TenantBudgetRequest": {
+        "properties": {
+          "spend_cap_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Spend Cap Usd",
+            "description": "Maximum allowed USD spend for this tenant"
+          },
+          "alert_threshold_ratio": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Alert Threshold Ratio",
+            "description": "Utilization fraction (0.0-1.0] that triggers a budget warning alert",
+            "default": 0.8
+          }
+        },
+        "type": "object",
+        "required": [
+          "spend_cap_usd"
+        ],
+        "title": "TenantBudgetRequest"
       },
       "ValidationError": {
         "properties": {
