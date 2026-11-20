@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from app.core.model_router import CostAwareModelRouter
 from app.core.semantic_cache import SemanticCache
 from app.core.tenant_semantic_cache import TenantSemanticCache
 from app.core.token_billing import TokenCostLedger
@@ -52,6 +53,7 @@ class GenerationResponse(BaseModel):
 
 
 tenant_semantic_cache = TenantSemanticCache()
+model_router = CostAwareModelRouter()
 token_cost_ledger = TokenCostLedger()
 
 app = FastAPI(
@@ -247,6 +249,17 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
     reranked = cross_encoder.rerank(request.query, candidates, top_k=request.top_k)
     synthesizer = StreamingContextSynthesizer()
     tenant_id = raw_request.headers.get("X-Tenant-ID", "default").strip() or "default"
+    tenant_tier = raw_request.headers.get("X-Tenant-Tier", "pro").strip() or "pro"
+    preferred_profile = raw_request.headers.get("X-Model-Profile")
+    pre_budget = token_cost_ledger.check_budget_available(tenant_id=tenant_id)
+    route_decision = model_router.route(
+        tenant_id=tenant_id,
+        query=request.query,
+        tenant_tier=tenant_tier,
+        remaining_budget_usd=pre_budget.remaining_usd,
+        context_chunks_count=len(reranked),
+        preferred_profile=preferred_profile,
+    )
     prompt_tokens = token_cost_ledger.estimate_tokens(request.query) + sum(
         token_cost_ledger.estimate_tokens(c.text) for c in reranked
     )
@@ -278,7 +291,12 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
         if budget_eval.remaining_usd is not None
         else "unlimited"
     )
-    stream_headers = {"X-Billing-Remaining-USD": remaining_after_prompt}
+    stream_headers = {
+        "X-Billing-Remaining-USD": remaining_after_prompt,
+        "X-Model-Selected": route_decision.model_id,
+        "X-Model-Tier": route_decision.selected_profile,
+        "X-Model-Downgraded": str(route_decision.downgraded).lower(),
+    }
     if budget_eval.spend_cap_usd is not None:
         stream_headers["X-Billing-Spend-Cap-USD"] = f"{budget_eval.spend_cap_usd:.6f}"
 
@@ -607,3 +625,12 @@ async def get_billing_budget_alerts():
     """Return triggered tenant budget warning and exhaustion alerts."""
     alerts = token_cost_ledger.get_alerts()
     return {"count": len(alerts), "alerts": alerts}
+
+
+@app.get("/v1/routing/telemetry", tags=["Routing"])
+async def get_model_routing_telemetry():
+    """Return cost-aware model routing distribution, active profiles, and budget downgrade counts."""
+    return {
+        "status": "operational",
+        "routing": model_router.stats(),
+    }
