@@ -324,3 +324,12 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Per-Tenant USD Spend Caps (`app/core/token_billing.py`):** Extended `TokenCostLedger` with `TenantBudgetPolicy`, pre-flight budget admission checks (`check_budget_available`), and automatic warning threshold alerts (default `80%` utilization).
 - **HTTP 402 Gateway Enforcement (`app/main.py`):** Emits `X-Billing-Remaining-USD` and `X-Billing-Spend-Cap-USD` headers on metered SSE streams and halts over-budget requests with `HTTP 402 Payment Required`.
 - **Budget Governance Endpoints:** Mounted `POST /v1/billing/budgets/{tenant_id}` and `GET /v1/billing/alerts` for live spend ceiling configuration and alert inspection.
+
+---
+
+## 🧭 Phase 38: Model Routing & Cost-Aware Tiered LLM Fallback
+
+- **Component:** `CostAwareModelRouter` in `app/core/model_router.py`.
+- **Tiered Model Profiles:** Routes streaming synthesis across `economy` (`gpt-4o-mini-tier`), `balanced` (`claude-sonnet-tier`), and `flagship` (`o3-reasoning-tier`) based on query complexity (`simple`, `moderate`, `complex`) and tenant SLA tier.
+- **Budget-Headroom Fallback:** Automatically downgrades `flagship` $\to$ `balanced` $\to$ `economy` when remaining `TokenCostLedger` budget headroom drops below safety thresholds, emitting `X-Model-Selected`, `X-Model-Tier`, and `X-Model-Downgraded` headers.
+- **Routing Telemetry:** Exposes real-time tier distribution and downgrade metrics at `GET /v1/routing/telemetry`.
