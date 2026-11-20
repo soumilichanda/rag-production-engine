@@ -733,6 +733,26 @@
           }
         }
       }
+    },
+    "/v1/routing/telemetry": {
+      "get": {
+        "tags": [
+          "Routing"
+        ],
+        "summary": "Get Model Routing Telemetry",
+        "description": "Return cost-aware model routing distribution, active profiles, and budget downgrade counts.",
+        "operationId": "get_model_routing_telemetry_v1_routing_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
