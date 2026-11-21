@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.core.model_router import CostAwareModelRouter
+from app.core.safety_guardrails import OutputSafetyGuardrail
 from app.core.semantic_cache import SemanticCache
 from app.core.tenant_semantic_cache import TenantSemanticCache
 from app.core.token_billing import TokenCostLedger
@@ -54,6 +55,7 @@ class GenerationResponse(BaseModel):
 
 tenant_semantic_cache = TenantSemanticCache()
 model_router = CostAwareModelRouter()
+safety_guardrail = OutputSafetyGuardrail()
 token_cost_ledger = TokenCostLedger()
 
 app = FastAPI(
@@ -243,10 +245,37 @@ from app.generation.streamer import StreamingContextSynthesizer
 
 @app.post("/v1/pipeline/stream", tags=["Generation"])
 async def stream_generation_pipeline(request: QueryRequest, raw_request: Request):
+    query_audit = safety_guardrail.evaluate(request.query)
+    if not query_audit.safe:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "Request blocked by output safety guardrail policy",
+                "blocked_reasons": query_audit.blocked_reasons,
+            },
+            headers={
+                "X-Safety-Status": "blocked",
+                "X-Safety-Redactions": str(query_audit.redacted_count),
+            },
+        )
+
     candidates, _ = store.query(
-        dummy_text_to_embedding(request.query), top_k=request.top_k * 2, threshold=-1.0
+        dummy_text_to_embedding(query_audit.sanitized_text),
+        top_k=request.top_k * 2,
+        threshold=-1.0,
     )
-    reranked = cross_encoder.rerank(request.query, candidates, top_k=request.top_k)
+    reranked = cross_encoder.rerank(
+        query_audit.sanitized_text, candidates, top_k=request.top_k
+    )
+    context_redactions = query_audit.redacted_count
+    sanitized_reranked = []
+    for chunk in reranked:
+        chunk_audit = safety_guardrail.evaluate(chunk.text)
+        context_redactions += chunk_audit.redacted_count
+        sanitized_reranked.append(
+            chunk.model_copy(update={"text": chunk_audit.sanitized_text})
+        )
+    reranked = sanitized_reranked
     synthesizer = StreamingContextSynthesizer()
     tenant_id = raw_request.headers.get("X-Tenant-ID", "default").strip() or "default"
     tenant_tier = raw_request.headers.get("X-Tenant-Tier", "pro").strip() or "pro"
@@ -296,16 +325,21 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
         "X-Model-Selected": route_decision.model_id,
         "X-Model-Tier": route_decision.selected_profile,
         "X-Model-Downgraded": str(route_decision.downgraded).lower(),
+        "X-Safety-Status": "passed",
+        "X-Safety-Redactions": str(context_redactions),
     }
     if budget_eval.spend_cap_usd is not None:
         stream_headers["X-Billing-Spend-Cap-USD"] = f"{budget_eval.spend_cap_usd:.6f}"
 
     async def _metered_sse_stream():
         completion_chunks = []
-        async for frame in synthesizer.stream_response(request.query, reranked):
+        async for frame in synthesizer.stream_response(
+            query_audit.sanitized_text, reranked
+        ):
             if '"event": "token"' in frame or '"token"' in frame:
                 completion_chunks.append(frame)
-            yield frame
+            safe_frame, _, _ = safety_guardrail.redactor.redact_text(frame)
+            yield safe_frame
         completion_tokens = max(len(completion_chunks), 1)
         token_cost_ledger.record_stream_usage(
             tenant_id=tenant_id,
@@ -633,4 +667,14 @@ async def get_model_routing_telemetry():
     return {
         "status": "operational",
         "routing": model_router.stats(),
+    }
+
+
+# --- Phase 39: Semantic Guardrails, PII Redaction & Output Safety Filtering ---
+@app.get("/v1/safety/telemetry", tags=["Safety"])
+async def get_safety_guardrail_telemetry():
+    """Return PII redaction counts, policy violation blocks, and safety inspection totals."""
+    return {
+        "status": "operational",
+        "safety": safety_guardrail.stats(),
     }
