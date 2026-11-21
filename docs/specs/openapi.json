@@ -753,6 +753,26 @@
           }
         }
       }
+    },
+    "/v1/safety/telemetry": {
+      "get": {
+        "tags": [
+          "Safety"
+        ],
+        "summary": "Get Safety Guardrail Telemetry",
+        "description": "Return PII redaction counts, policy violation blocks, and safety inspection totals.",
+        "operationId": "get_safety_guardrail_telemetry_v1_safety_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

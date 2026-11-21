@@ -327,13 +327,6 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 
 ---
 
-## 🧭 Phase 38: Model Routing & Cost-Aware Tiered LLM Fallback
-
-- **Component:** `CostAwareModelRouter` in `app/core/model_router.py`.
-- **Tiered Model Profiles:** Routes streaming synthesis across `economy` (`gpt-4o-mini-tier`), `balanced` (`claude-sonnet-tier`), and `flagship` (`o3-reasoning-tier`) based on query complexity (`simple`, `moderate`, `complex`) and tenant SLA tier.
-- **Budget-Headroom Fallback:** Automatically downgrades `flagship` $\to$ `balanced` $\to$ `economy` when remaining `TokenCostLedger` budget headroom drops below safety thresholds, emitting `X-Model-Selected`, `X-Model-Tier`, and `X-Model-Downgraded` headers.
-- **Routing Telemetry:** Exposes real-time tier distribution and downgrade metrics at `GET /v1/routing/telemetry`.
-
 ---
 
 ## 🧭 Phase 38: Model Routing & Cost-Aware Tiered LLM Fallback
@@ -342,3 +335,12 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Tiered Model Profiles:** Routes streaming synthesis across `economy` (`gpt-4o-mini-tier`), `balanced` (`claude-sonnet-tier`), and `flagship` (`o3-reasoning-tier`) based on query complexity (`simple`, `moderate`, `complex`) and tenant SLA tier.
 - **Budget-Headroom Fallback:** Automatically downgrades `flagship` $\to$ `balanced` $\to$ `economy` when remaining `TokenCostLedger` budget headroom drops below safety thresholds, emitting `X-Model-Selected`, `X-Model-Tier`, and `X-Model-Downgraded` headers.
 - **Routing Telemetry:** Exposes real-time tier distribution and downgrade metrics at `GET /v1/routing/telemetry`.
+
+
+---
+
+## ??? Phase 39: Semantic Guardrails, PII Redaction & Output Safety Filtering
+
+- **Components:** `StreamingPIIRedactor` & `OutputSafetyGuardrail` (`app/core/safety_guardrails.py`).
+- **Pre-Emission Safety & PII Masking:** Masks sensitive entities (`EMAIL`, `SSN`, `CARD`, `SECRET`) across queries, retrieved context chunks, and live SSE token frames while blocking prompt-exfiltration signatures (`HTTP 400`).
+- **Gateway Telemetry:** Propagates `X-Safety-Status` and `X-Safety-Redactions` headers on `POST /v1/pipeline/stream` and exposes live guardrail counters via `GET /v1/safety/telemetry`.
