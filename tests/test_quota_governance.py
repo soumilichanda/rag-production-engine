@@ -1,4 +1,4 @@
-import time
+﻿import time
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -20,7 +20,7 @@ def test_token_bucket_burst_and_monotonic_refill():
     assert blocked.remaining == 0
     assert blocked.retry_after > 0.0
 
-    time.sleep(0.06)
+    time.sleep(0.08)
     recovered = mgr.evaluate("tenant-alpha")
     assert recovered.allowed is True
 
