@@ -9,13 +9,13 @@ import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class ClaimAttribution:
     claim: str
-    chunk_id: Optional[str]
+    chunk_id: str | None
     attribution_score: float
     grounded: bool
 
@@ -25,11 +25,11 @@ class GroundingReport:
     grounding_score: float
     grounded_claims: int
     total_claims: int
-    cited_chunk_ids: List[str]
-    attributions: List[ClaimAttribution]
-    ungrounded_claims: List[str]
+    cited_chunk_ids: list[str]
+    attributions: list[ClaimAttribution]
+    ungrounded_claims: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "grounding_score": self.grounding_score,
             "grounded_claims": self.grounded_claims,
@@ -51,7 +51,7 @@ class SemanticCitationGrounder:
         cleaned = re.sub(r"[^\w\s]", "", text.lower())
         return {tok for tok in cleaned.split() if len(tok) > 2}
 
-    def verify(self, answer: str, chunks: List[Dict[str, Any]]) -> GroundingReport:
+    def verify(self, answer: str, chunks: list[dict[str, Any]]) -> GroundingReport:
         sentences = [s.strip() for s in re.split(r"[.!?]\s+", answer.strip()) if s.strip()]
         if not sentences:
             return GroundingReport(
@@ -69,9 +69,9 @@ class SemanticCitationGrounder:
             toks = self._tokenize(str(ch.get("text", "")))
             chunk_tokens.append((cid, toks))
 
-        attributions: List[ClaimAttribution] = []
-        ungrounded: List[str] = []
-        cited_set: List[str] = []
+        attributions: list[ClaimAttribution] = []
+        ungrounded: list[str] = []
+        cited_set: list[str] = []
         grounded_count = 0
 
         for sent in sentences:
@@ -81,7 +81,7 @@ class SemanticCitationGrounder:
                 attributions.append(ClaimAttribution(sent, None, 1.0, True))
                 continue
 
-            best_cid: Optional[str] = None
+            best_cid: str | None = None
             best_score = 0.0
 
             for cid, c_toks in chunk_tokens:
@@ -128,12 +128,12 @@ class AuditRecord:
     timestamp: float
     tenant_id: str
     query_sha256: str
-    cited_chunk_ids: List[str]
+    cited_chunk_ids: list[str]
     grounding_score: float
     safety_status: str
     prev_hash: str
     entry_hash: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ComplianceAuditLog:
@@ -144,10 +144,10 @@ class ComplianceAuditLog:
     def __init__(self, max_entries: int = 1000):
         self.max_entries = max_entries
         self._lock = threading.RLock()
-        self._entries: List[AuditRecord] = []
+        self._entries: list[AuditRecord] = []
 
     @staticmethod
-    def _compute_hash(payload: Dict[str, Any]) -> str:
+    def _compute_hash(payload: dict[str, Any]) -> str:
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -155,10 +155,10 @@ class ComplianceAuditLog:
         self,
         tenant_id: str,
         query: str,
-        cited_chunk_ids: List[str],
+        cited_chunk_ids: list[str],
         grounding_score: float,
         safety_status: str = "PASS",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AuditRecord:
         with self._lock:
             prev_hash = self._entries[-1].entry_hash if self._entries else self.GENESIS_HASH
@@ -219,14 +219,14 @@ class ComplianceAuditLog:
                 expected_prev = rec.entry_hash
             return True
 
-    def list_entries(self, tenant_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def list_entries(self, tenant_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         with self._lock:
             items = self._entries
             if tenant_id:
                 items = [e for e in items if e.tenant_id == tenant_id]
             return [asdict(e) for e in items[-limit:]]
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         with self._lock:
             avg_grounding = (
                 round(sum(e.grounding_score for e in self._entries) / len(self._entries), 4)

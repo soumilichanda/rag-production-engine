@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from app.core.citation_audit import ComplianceAuditLog, SemanticCitationGrounder
 from app.core.model_router import CostAwareModelRouter
 from app.core.safety_guardrails import OutputSafetyGuardrail
 from app.core.semantic_cache import SemanticCache
@@ -56,6 +57,8 @@ class GenerationResponse(BaseModel):
 tenant_semantic_cache = TenantSemanticCache()
 model_router = CostAwareModelRouter()
 safety_guardrail = OutputSafetyGuardrail()
+citation_grounder = SemanticCitationGrounder()
+compliance_audit_log = ComplianceAuditLog()
 token_cost_ledger = TokenCostLedger()
 
 app = FastAPI(
@@ -320,6 +323,22 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
         if budget_eval.remaining_usd is not None
         else "unlimited"
     )
+    chunk_payloads = [{"chunk_id": c.chunk_id, "text": c.text} for c in reranked]
+    grounding_report = citation_grounder.verify(
+        query_audit.sanitized_text, chunk_payloads
+    )
+    audit_record = compliance_audit_log.record(
+        tenant_id=tenant_id,
+        query=query_audit.sanitized_text,
+        cited_chunk_ids=grounding_report.cited_chunk_ids,
+        grounding_score=grounding_report.grounding_score,
+        safety_status="passed",
+        metadata={
+            "model_id": route_decision.model_id,
+            "redactions": context_redactions,
+        },
+    )
+
     stream_headers = {
         "X-Billing-Remaining-USD": remaining_after_prompt,
         "X-Model-Selected": route_decision.model_id,
@@ -327,6 +346,11 @@ async def stream_generation_pipeline(request: QueryRequest, raw_request: Request
         "X-Model-Downgraded": str(route_decision.downgraded).lower(),
         "X-Safety-Status": "passed",
         "X-Safety-Redactions": str(context_redactions),
+        "X-Grounding-Score": f"{grounding_report.grounding_score:.4f}",
+        "X-Cited-Chunks": ",".join(grounding_report.cited_chunk_ids)
+        if grounding_report.cited_chunk_ids
+        else "none",
+        "X-Audit-ID": audit_record.audit_id,
     }
     if budget_eval.spend_cap_usd is not None:
         stream_headers["X-Billing-Spend-Cap-USD"] = f"{budget_eval.spend_cap_usd:.6f}"
@@ -677,4 +701,25 @@ async def get_safety_guardrail_telemetry():
     return {
         "status": "operational",
         "safety": safety_guardrail.stats(),
+    }
+
+
+# --- Phase 40: Semantic Citation Grounding, Attribution Verification & Audit Logging ---
+@app.get("/v1/audit/logs", tags=["Audit"])
+async def get_compliance_audit_logs(tenant_id: str | None = None, limit: int = 50):
+    """Return immutable SHA-256 hash-chained compliance audit records."""
+    entries = compliance_audit_log.list_entries(tenant_id=tenant_id, limit=limit)
+    return {
+        "count": len(entries),
+        "chain_valid": compliance_audit_log.verify_chain(),
+        "entries": entries,
+    }
+
+
+@app.get("/v1/audit/summary", tags=["Audit"])
+async def get_compliance_audit_summary():
+    """Return ledger integrity verification status and average grounding metrics."""
+    return {
+        "status": "operational",
+        "audit": compliance_audit_log.summary(),
     }
