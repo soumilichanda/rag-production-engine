@@ -773,6 +773,84 @@
           }
         }
       }
+    },
+    "/v1/audit/logs": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Get Compliance Audit Logs",
+        "description": "Return immutable SHA-256 hash-chained compliance audit records.",
+        "operationId": "get_compliance_audit_logs_v1_audit_logs_get",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audit/summary": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Get Compliance Audit Summary",
+        "description": "Return ledger integrity verification status and average grounding metrics.",
+        "operationId": "get_compliance_audit_summary_v1_audit_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

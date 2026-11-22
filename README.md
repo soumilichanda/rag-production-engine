@@ -339,8 +339,17 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 
 ---
 
-## ??? Phase 39: Semantic Guardrails, PII Redaction & Output Safety Filtering
+## 🛡️  Phase 39: Semantic Guardrails, PII Redaction & Output Safety Filtering
 
 - **Components:** `StreamingPIIRedactor` & `OutputSafetyGuardrail` (`app/core/safety_guardrails.py`).
 - **Pre-Emission Safety & PII Masking:** Masks sensitive entities (`EMAIL`, `SSN`, `CARD`, `SECRET`) across queries, retrieved context chunks, and live SSE token frames while blocking prompt-exfiltration signatures (`HTTP 400`).
 - **Gateway Telemetry:** Propagates `X-Safety-Status` and `X-Safety-Redactions` headers on `POST /v1/pipeline/stream` and exposes live guardrail counters via `GET /v1/safety/telemetry`.
+
+
+---
+
+## ?? Phase 40: Semantic Citation Grounding, Attribution Verification & Audit Logging
+
+- **Components:** `SemanticCitationGrounder` & `ComplianceAuditLog` (`app/core/citation_audit.py`).
+- **Claim-to-Chunk Attribution:** Decomposes responses into atomic claims, verifies token attribution against retrieved source chunks, and emits `X-Grounding-Score`, `X-Cited-Chunks`, and `X-Audit-ID` headers on `POST /v1/pipeline/stream`.
+- **Immutable Audit Ledger:** Appends SHA-256 hash-chained compliance records (`prev_hash` $\to$ `entry_hash`) with cryptographic tamper verification exposed via `GET /v1/audit/logs` and `GET /v1/audit/summary`.
