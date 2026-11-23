@@ -20,6 +20,7 @@ from app.resilience.load_shedder import ConcurrencyLoadShedder
 from app.resilience.rate_limiter import HierarchicalQuotaManager
 from app.resilience.sla_tiers import TieredQuotaManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
+from app.retrieval.knowledge_graph import KnowledgeGraphIndex
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
 
@@ -722,4 +723,59 @@ async def get_compliance_audit_summary():
     return {
         "status": "operational",
         "audit": compliance_audit_log.summary(),
+    }
+
+
+# --- Phase 41: Hybrid Graph-RAG Entity Extraction & Multi-Hop Knowledge Traversal ---
+knowledge_graph_index = KnowledgeGraphIndex(max_hops=2, max_neighbors_per_hop=12)
+
+
+@app.post("/v1/graph/ingest", tags=["GraphRAG"])
+async def ingest_knowledge_graph_chunks(payload: dict):
+    """Extract entity-relation triples from document chunks and index into the knowledge graph."""
+    chunks = payload.get("documents", [])
+    triples_indexed = knowledge_graph_index.ingest_chunks(chunks)
+    return {
+        "status": "indexed",
+        "chunks_processed": len(chunks),
+        "triples_indexed": triples_indexed,
+        "graph": knowledge_graph_index.stats(),
+    }
+
+
+@app.post("/v1/graph/traverse", tags=["GraphRAG"])
+async def traverse_knowledge_graph(payload: dict):
+    """Perform 2-hop graph neighborhood traversal and fuse with dense vector candidates."""
+    query = str(payload.get("query", "")).strip()
+    top_k = int(payload.get("top_k", 3))
+    graph_ctx = knowledge_graph_index.traverse_2hop(query=query, top_k=top_k)
+    dense_candidates, _ = store.query(
+        dummy_text_to_embedding(query or "graph"), top_k=top_k, threshold=-1.0
+    )
+    fused_context = list(graph_ctx["chunks"])
+    seen_ids = {c["chunk_id"] for c in fused_context}
+    for dc in dense_candidates:
+        if dc.chunk_id not in seen_ids and len(fused_context) < top_k * 2:
+            fused_context.append(
+                {
+                    "chunk_id": dc.chunk_id,
+                    "text": dc.text,
+                    "graph_score": round(float(dc.similarity_score), 4),
+                    "retrieval_source": "dense_vector",
+                }
+            )
+    return {
+        "query": query,
+        "seed_entities": graph_ctx["seed_entities"],
+        "paths": graph_ctx["paths"],
+        "fused_results": fused_context,
+    }
+
+
+@app.get("/v1/graph/telemetry", tags=["GraphRAG"])
+async def get_knowledge_graph_telemetry():
+    """Return knowledge graph node, triple, and 2-hop traversal telemetry."""
+    return {
+        "status": "operational",
+        "graph": knowledge_graph_index.stats(),
     }
