@@ -353,3 +353,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Components:** `SemanticCitationGrounder` & `ComplianceAuditLog` (`app/core/citation_audit.py`).
 - **Claim-to-Chunk Attribution:** Decomposes responses into atomic claims, verifies token attribution against retrieved source chunks, and emits `X-Grounding-Score`, `X-Cited-Chunks`, and `X-Audit-ID` headers on `POST /v1/pipeline/stream`.
 - **Immutable Audit Ledger:** Appends SHA-256 hash-chained compliance records (`prev_hash` $\to$ `entry_hash`) with cryptographic tamper verification exposed via `GET /v1/audit/logs` and `GET /v1/audit/summary`.
+
+---
+
+## 🕸️ Phase 41: Hybrid Graph-RAG Entity Extraction & Multi-Hop Knowledge Traversal
+
+- **Knowledge Graph Index (`app/retrieval/knowledge_graph.py`):** Thread-safe `KnowledgeGraphIndex` performing deterministic `(subject, relation, object)` triple extraction during chunk ingestion and storing bidirectional relational edges with chunk provenance.
+- **2-Hop Neighborhood Traversal & Fusion (`app/main.py`):** Bounded breadth-first traversal (`max_hops=2`) with hop-decayed path scoring (`1 / (1 + hop)`) fused alongside dense vector retrieval candidates via `POST /v1/graph/ingest`, `POST /v1/graph/traverse`, and `GET /v1/graph/telemetry`.
+- **Verification (`tests/test_knowledge_graph.py`):** Automated async test suite validating multi-hop entity bridging across disconnected chunks and live FastAPI gateway telemetry.

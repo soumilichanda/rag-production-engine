@@ -851,6 +851,110 @@
           }
         }
       }
+    },
+    "/v1/graph/ingest": {
+      "post": {
+        "tags": [
+          "GraphRAG"
+        ],
+        "summary": "Ingest Knowledge Graph Chunks",
+        "description": "Extract entity-relation triples from document chunks and index into the knowledge graph.",
+        "operationId": "ingest_knowledge_graph_chunks_v1_graph_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/graph/traverse": {
+      "post": {
+        "tags": [
+          "GraphRAG"
+        ],
+        "summary": "Traverse Knowledge Graph",
+        "description": "Perform 2-hop graph neighborhood traversal and fuse with dense vector candidates.",
+        "operationId": "traverse_knowledge_graph_v1_graph_traverse_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/graph/telemetry": {
+      "get": {
+        "tags": [
+          "GraphRAG"
+        ],
+        "summary": "Get Knowledge Graph Telemetry",
+        "description": "Return knowledge graph node, triple, and 2-hop traversal telemetry.",
+        "operationId": "get_knowledge_graph_telemetry_v1_graph_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
