@@ -43,7 +43,7 @@ class AdaptiveQueryDecomposer:
         re.IGNORECASE,
     )
     _CONJUNCTION_SPLIT = re.compile(
-        r"\s*(?:\band\b|\bwhile\b|\bwhereas\b|\balso\b|;|\?\s+)\s*",
+        r"\s*(?:\bvs\.?\b|\bversus\b|\band\b|\bwhile\b|\bwhereas\b|\balso\b|;|\?\s+)\s*",
         re.IGNORECASE,
     )
 
