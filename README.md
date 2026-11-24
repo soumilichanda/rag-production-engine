@@ -361,3 +361,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Knowledge Graph Index (`app/retrieval/knowledge_graph.py`):** Thread-safe `KnowledgeGraphIndex` performing deterministic `(subject, relation, object)` triple extraction during chunk ingestion and storing bidirectional relational edges with chunk provenance.
 - **2-Hop Neighborhood Traversal & Fusion (`app/main.py`):** Bounded breadth-first traversal (`max_hops=2`) with hop-decayed path scoring (`1 / (1 + hop)`) fused alongside dense vector retrieval candidates via `POST /v1/graph/ingest`, `POST /v1/graph/traverse`, and `GET /v1/graph/telemetry`.
 - **Verification (`tests/test_knowledge_graph.py`):** Automated async test suite validating multi-hop entity bridging across disconnected chunks and live FastAPI gateway telemetry.
+
+---
+
+## 🧩 Phase 42: Adaptive Query Decomposition & Sub-Question Execution Planner
+
+- **Query Decomposer (`app/retrieval/query_planner.py`):** Implemented `AdaptiveQueryDecomposer` to classify queries as `direct` vs `decomposed`, splitting comparative (`vs` / `versus`) and multi-clause analytical questions into bounded atomic sub-questions (`max_sub_queries=4`).
+- **Parallel Execution & Coverage-Weighted RRF:** Implemented `SubQuestionExecutionPlanner` executing concurrent branch retrieval via `asyncio.gather` and ranking overlapping chunks with a multi-hop corroboration boost (`1.0 + 0.15 * (hits - 1)`).
+- **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/planner/execute` and `GET /v1/planner/telemetry` for sub-question plan execution, merged context synthesis, and real-time branching metrics.

@@ -955,6 +955,68 @@
           }
         }
       }
+    },
+    "/v1/planner/execute": {
+      "post": {
+        "tags": [
+          "Planner"
+        ],
+        "summary": "Execute Decomposed Query Plan",
+        "description": "Decompose complex multi-hop queries into atomic sub-questions and synthesize merged context.",
+        "operationId": "execute_decomposed_query_plan_v1_planner_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/planner/telemetry": {
+      "get": {
+        "tags": [
+          "Planner"
+        ],
+        "summary": "Get Query Planner Telemetry",
+        "description": "Return adaptive query decomposition counts and sub-question branching telemetry.",
+        "operationId": "get_query_planner_telemetry_v1_planner_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
