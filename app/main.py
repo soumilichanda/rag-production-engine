@@ -21,6 +21,10 @@ from app.resilience.rate_limiter import HierarchicalQuotaManager
 from app.resilience.sla_tiers import TieredQuotaManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
 from app.retrieval.knowledge_graph import KnowledgeGraphIndex
+from app.retrieval.query_planner import (
+    AdaptiveQueryDecomposer,
+    SubQuestionExecutionPlanner,
+)
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
 
@@ -61,6 +65,10 @@ safety_guardrail = OutputSafetyGuardrail()
 citation_grounder = SemanticCitationGrounder()
 compliance_audit_log = ComplianceAuditLog()
 token_cost_ledger = TokenCostLedger()
+
+query_execution_planner = SubQuestionExecutionPlanner(
+    decomposer=AdaptiveQueryDecomposer(max_sub_queries=4)
+)
 
 app = FastAPI(
     title="Production RAG Engine",
@@ -778,4 +786,46 @@ async def get_knowledge_graph_telemetry():
     return {
         "status": "operational",
         "graph": knowledge_graph_index.stats(),
+    }
+
+
+# --- Phase 42: Adaptive Query Decomposition & Sub-Question Execution Planner ---
+@app.post("/v1/planner/execute", tags=["Planner"])
+async def execute_decomposed_query_plan(payload: dict):
+    """Decompose complex multi-hop queries into atomic sub-questions and synthesize merged context."""
+    query = str(payload.get("query", "")).strip()
+    top_k = int(payload.get("top_k", 4))
+
+    async def _branch_retriever(sub_q: str, branch_k: int):
+        graph_ctx = knowledge_graph_index.traverse_2hop(query=sub_q, top_k=branch_k)
+        dense_candidates, _ = store.query(
+            dummy_text_to_embedding(sub_q or "planner"), top_k=branch_k, threshold=-1.0
+        )
+        merged_branch = list(graph_ctx["chunks"])
+        seen = {c["chunk_id"] for c in merged_branch}
+        for dc in dense_candidates:
+            if dc.chunk_id not in seen:
+                merged_branch.append(
+                    {
+                        "chunk_id": dc.chunk_id,
+                        "text": dc.text,
+                        "retrieval_source": "dense_vector",
+                    }
+                )
+        return merged_branch[:branch_k]
+
+    result = await query_execution_planner.execute(
+        query=query,
+        retriever_fn=_branch_retriever,
+        top_k=top_k,
+    )
+    return result
+
+
+@app.get("/v1/planner/telemetry", tags=["Planner"])
+async def get_query_planner_telemetry():
+    """Return adaptive query decomposition counts and sub-question branching telemetry."""
+    return {
+        "status": "operational",
+        "planner": query_execution_planner.stats(),
     }
