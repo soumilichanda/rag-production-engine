@@ -369,3 +369,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Query Decomposer (`app/retrieval/query_planner.py`):** Implemented `AdaptiveQueryDecomposer` to classify queries as `direct` vs `decomposed`, splitting comparative (`vs` / `versus`) and multi-clause analytical questions into bounded atomic sub-questions (`max_sub_queries=4`).
 - **Parallel Execution & Coverage-Weighted RRF:** Implemented `SubQuestionExecutionPlanner` executing concurrent branch retrieval via `asyncio.gather` and ranking overlapping chunks with a multi-hop corroboration boost (`1.0 + 0.15 * (hits - 1)`).
 - **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/planner/execute` and `GET /v1/planner/telemetry` for sub-question plan execution, merged context synthesis, and real-time branching metrics.
+
+---
+
+## 🔄 Phase 43: Self-Reflective Critique Loop & Iterative Retrieval Refinement (Self-RAG)
+
+- **Facet Coverage Critique (`app/retrieval/self_reflective_rag.py`):** Implemented `SelfReflectiveCritiqueLoop` to extract query facets, score context coverage sufficiency against a configurable cutoff (`coverage_threshold=0.75`), and identify missing facets.
+- **Bounded Iterative Refinement:** Synthesizes targeted follow-up refinement queries from missing facets across bounded passes (`max_iterations=3`), merging newly discovered evidence with corroboration score boosts and early-exit short-circuiting.
+- **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/self-rag/execute` and `GET /v1/self-rag/telemetry` for pass-by-pass critique inspection and refinement gain metrics.

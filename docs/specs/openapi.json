@@ -1017,6 +1017,68 @@
           }
         }
       }
+    },
+    "/v1/self-rag/execute": {
+      "post": {
+        "tags": [
+          "Self-RAG"
+        ],
+        "summary": "Execute Self Reflective Rag",
+        "description": "Execute Self-RAG retrieval with facet coverage critique and iterative refinement.",
+        "operationId": "execute_self_reflective_rag_v1_self_rag_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/self-rag/telemetry": {
+      "get": {
+        "tags": [
+          "Self-RAG"
+        ],
+        "summary": "Get Self Reflective Rag Telemetry",
+        "description": "Return Self-RAG critique loop executions, refinement trigger counts, and coverage gains.",
+        "operationId": "get_self_reflective_rag_telemetry_v1_self_rag_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
