@@ -25,6 +25,7 @@ from app.retrieval.query_planner import (
     AdaptiveQueryDecomposer,
     SubQuestionExecutionPlanner,
 )
+from app.retrieval.self_reflective_rag import SelfReflectiveCritiqueLoop
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
 
@@ -828,4 +829,58 @@ async def get_query_planner_telemetry():
     return {
         "status": "operational",
         "planner": query_execution_planner.stats(),
+    }
+
+
+# --- Phase 43: Self-Reflective Critique Loop & Iterative Retrieval Refinement ---
+self_reflective_rag = SelfReflectiveCritiqueLoop(
+    coverage_threshold=0.75, max_iterations=3
+)
+
+
+@app.post("/v1/self-rag/execute", tags=["Self-RAG"])
+async def execute_self_reflective_rag(payload: dict):
+    """Execute Self-RAG retrieval with facet coverage critique and iterative refinement."""
+    query = str(payload.get("query", "")).strip()
+    top_k = int(payload.get("top_k", 4))
+
+    def _branch_retrieve(sub_q: str, k: int) -> list[dict]:
+        candidates, _ = store.query(
+            dummy_text_to_embedding(sub_q or "self-rag"), top_k=k, threshold=-1.0
+        )
+        return [
+            {
+                "chunk_id": c.chunk_id,
+                "text": c.text,
+                "score": float(c.similarity_score),
+                "metadata": dict(c.metadata),
+            }
+            for c in candidates
+        ]
+
+    outcome = await self_reflective_rag.execute(
+        query=query,
+        retrieve_fn=_branch_retrieve,
+        top_k=top_k,
+    )
+    return {
+        "query": outcome.query,
+        "sufficient": outcome.sufficient,
+        "initial_coverage_score": outcome.initial_coverage_score,
+        "final_coverage_score": outcome.final_coverage_score,
+        "total_passes": outcome.total_passes,
+        "refinement_triggered": outcome.refinement_triggered,
+        "facets": outcome.facets,
+        "missing_facets": outcome.missing_facets,
+        "critique_history": outcome.critique_history,
+        "results": outcome.results,
+    }
+
+
+@app.get("/v1/self-rag/telemetry", tags=["Self-RAG"])
+async def get_self_reflective_rag_telemetry():
+    """Return Self-RAG critique loop executions, refinement trigger counts, and coverage gains."""
+    return {
+        "status": "operational",
+        "self_rag": self_reflective_rag.stats(),
     }
