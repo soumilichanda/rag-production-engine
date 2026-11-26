@@ -26,6 +26,7 @@ from app.retrieval.query_planner import (
     SubQuestionExecutionPlanner,
 )
 from app.retrieval.self_reflective_rag import SelfReflectiveCritiqueLoop
+from app.retrieval.semantic_compressor import SemanticContextCompressor
 from app.telemetry.metrics import metrics_exporter
 from app.telemetry.tracer import DistributedPipelineTracer
 
@@ -883,4 +884,55 @@ async def get_self_reflective_rag_telemetry():
     return {
         "status": "operational",
         "self_rag": self_reflective_rag.stats(),
+    }
+
+
+# --- Phase 44: Contextual Compression & Semantic Deduplication Pipeline ---
+semantic_compressor = SemanticContextCompressor(
+    dedup_threshold=0.88,
+    default_token_budget=180,
+)
+
+
+@app.post("/v1/context/compress", tags=["Compression"])
+async def compress_context_spans(payload: dict):
+    """Prune redundant sentence spans via cosine deduplication and pack within a token budget."""
+    query = str(payload.get("query", "")).strip()
+    chunks = payload.get("chunks")
+    top_k = int(payload.get("top_k", 4))
+    max_token_budget = payload.get("max_token_budget")
+    dedup_threshold = payload.get("dedup_threshold")
+
+    if chunks is None:
+        dense_candidates, _ = store.query(
+            dummy_text_to_embedding(query or "context"),
+            top_k=top_k,
+            threshold=-1.0,
+        )
+        chunks = [
+            {
+                "chunk_id": c.chunk_id,
+                "text": c.text,
+                "similarity_score": float(c.similarity_score),
+                "metadata": dict(c.metadata),
+            }
+            for c in dense_candidates
+        ]
+
+    return semantic_compressor.compress(
+        query=query,
+        chunks=chunks,
+        max_token_budget=int(max_token_budget)
+        if max_token_budget is not None
+        else None,
+        dedup_threshold=float(dedup_threshold) if dedup_threshold is not None else None,
+    )
+
+
+@app.get("/v1/compression/telemetry", tags=["Compression"])
+async def get_semantic_compression_telemetry():
+    """Return span deduplication counts, token reduction ratios, and compression telemetry."""
+    return {
+        "status": "operational",
+        "compression": semantic_compressor.stats(),
     }
