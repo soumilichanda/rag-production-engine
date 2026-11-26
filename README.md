@@ -377,3 +377,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Facet Coverage Critique (`app/retrieval/self_reflective_rag.py`):** Implemented `SelfReflectiveCritiqueLoop` to extract query facets, score context coverage sufficiency against a configurable cutoff (`coverage_threshold=0.75`), and identify missing facets.
 - **Bounded Iterative Refinement:** Synthesizes targeted follow-up refinement queries from missing facets across bounded passes (`max_iterations=3`), merging newly discovered evidence with corroboration score boosts and early-exit short-circuiting.
 - **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/self-rag/execute` and `GET /v1/self-rag/telemetry` for pass-by-pass critique inspection and refinement gain metrics.
+
+---
+
+## 🗜️ Phase 44: Contextual Compression & Semantic Deduplication Pipeline
+
+- **Semantic Context Compressor (`app/retrieval/semantic_compressor.py`):** Implemented `SemanticContextCompressor` to decompose multi-pass retrieved chunks into provenance-tagged sentence spans, eliminate redundant spans via pairwise cosine similarity (`dedup_threshold=0.88`), and select optimal high-salience spans under a strict `max_token_budget` via 0/1 knapsack dynamic programming.
+- **Narrative Order & Provenance Preservation:** Restores original document/span ordering post-knapsack while retaining `span_id`, `chunk_id`, salience scores, and source metadata.
+- **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/context/compress` and `GET /v1/compression/telemetry` to expose real-time span deduplication counts and token reduction ratios.

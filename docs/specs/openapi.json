@@ -1079,6 +1079,68 @@
           }
         }
       }
+    },
+    "/v1/context/compress": {
+      "post": {
+        "tags": [
+          "Compression"
+        ],
+        "summary": "Compress Context Spans",
+        "description": "Prune redundant sentence spans via cosine deduplication and pack within a token budget.",
+        "operationId": "compress_context_spans_v1_context_compress_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compression/telemetry": {
+      "get": {
+        "tags": [
+          "Compression"
+        ],
+        "summary": "Get Semantic Compression Telemetry",
+        "description": "Return span deduplication counts, token reduction ratios, and compression telemetry.",
+        "operationId": "get_semantic_compression_telemetry_v1_compression_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
