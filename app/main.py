@@ -1,4 +1,3 @@
-from app.ingestion.semantic_chunker import AdaptiveSemanticChunker
 import json
 from typing import Any
 
@@ -12,6 +11,7 @@ from app.core.semantic_cache import SemanticCache
 from app.core.tenant_semantic_cache import TenantSemanticCache
 from app.core.token_billing import TokenCostLedger
 from app.evaluation.faithfulness import FaithfulnessEvaluator
+from app.ingestion.semantic_chunker import AdaptiveSemanticChunker
 from app.resilience.adaptive_retry import DecorrelatedJitterRetry, HedgedRequestExecutor
 from app.resilience.canary_router import CanaryTrafficRouter
 from app.resilience.chaos import ChaosFaultInjector, ChaosInjectedError
