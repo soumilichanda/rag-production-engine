@@ -1141,6 +1141,72 @@
           }
         }
       }
+    },
+    "/v1/ingest/semantic": {
+      "post": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Ingest Semantic Document",
+        "operationId": "ingest_semantic_document_v1_ingest_semantic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ingest Semantic Document V1 Ingest Semantic Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ingestion/semantic/telemetry": {
+      "get": {
+        "tags": [
+          "Ingestion"
+        ],
+        "summary": "Get Semantic Ingestion Telemetry",
+        "operationId": "get_semantic_ingestion_telemetry_v1_ingestion_semantic_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Semantic Ingestion Telemetry V1 Ingestion Semantic Telemetry Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1480,6 +1546,49 @@
           "similarity_score"
         ],
         "title": "RetrievedChunk"
+      },
+      "SemanticIngestRequest": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Doc Id",
+            "description": "Unique source document identifier"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text",
+            "description": "Raw document text or Markdown content"
+          },
+          "max_chunk_tokens": {
+            "type": "integer",
+            "maximum": 2048.0,
+            "minimum": 16.0,
+            "title": "Max Chunk Tokens",
+            "default": 180
+          },
+          "min_chunk_tokens": {
+            "type": "integer",
+            "maximum": 512.0,
+            "minimum": 4.0,
+            "title": "Min Chunk Tokens",
+            "default": 24
+          },
+          "similarity_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity Threshold",
+            "default": 0.35
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "text"
+        ],
+        "title": "SemanticIngestRequest"
       },
       "TenantBudgetRequest": {
         "properties": {

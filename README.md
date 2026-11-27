@@ -385,3 +385,11 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Semantic Context Compressor (`app/retrieval/semantic_compressor.py`):** Implemented `SemanticContextCompressor` to decompose multi-pass retrieved chunks into provenance-tagged sentence spans, eliminate redundant spans via pairwise cosine similarity (`dedup_threshold=0.88`), and select optimal high-salience spans under a strict `max_token_budget` via 0/1 knapsack dynamic programming.
 - **Narrative Order & Provenance Preservation:** Restores original document/span ordering post-knapsack while retaining `span_id`, `chunk_id`, salience scores, and source metadata.
 - **Gateway & Telemetry Endpoints (`app/main.py`):** Mounted `POST /v1/context/compress` and `GET /v1/compression/telemetry` to expose real-time span deduplication counts and token reduction ratios.
+
+---
+
+## ?? Phase 45: Adaptive Semantic Chunking & Structural Boundary Splitting
+
+- **Engine (`app/ingestion/semantic_chunker.py`):** Implemented `AdaptiveSemanticChunker` combining Markdown structural boundary segmentation with sliding-window sentence embedding cosine-valley breakpoint detection.
+- **Bounded Coherence:** Enforces configurable `min_chunk_tokens` and `max_chunk_tokens` guardrails while tracking per-chunk topical coherence scores and split reasons (`structural`, `semantic_shift`, `max_tokens`, `eof`).
+- **Gateway APIs (`app/main.py`):** Exposed `POST /v1/ingest/semantic` and `GET /v1/ingestion/semantic/telemetry` with OpenAPI schema parity.
