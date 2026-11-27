@@ -1,3 +1,4 @@
+from app.ingestion.semantic_chunker import AdaptiveSemanticChunker
 import json
 from typing import Any
 
@@ -936,3 +937,60 @@ async def get_semantic_compression_telemetry():
         "status": "operational",
         "compression": semantic_compressor.stats(),
     }
+
+
+# --- Phase 45: Adaptive Semantic Chunking & Structural Boundary Splitting ---
+_semantic_chunker = AdaptiveSemanticChunker()
+
+
+class SemanticIngestRequest(BaseModel):
+    doc_id: str = Field(..., min_length=1, description="Unique source document identifier")
+    text: str = Field(..., min_length=1, description="Raw document text or Markdown content")
+    max_chunk_tokens: int = Field(default=180, ge=16, le=2048)
+    min_chunk_tokens: int = Field(default=24, ge=4, le=512)
+    similarity_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
+
+
+@app.post("/v1/ingest/semantic", tags=["Ingestion"])
+async def ingest_semantic_document(payload: SemanticIngestRequest) -> dict:
+    if payload.min_chunk_tokens > payload.max_chunk_tokens:
+        raise HTTPException(
+            status_code=422,
+            detail="min_chunk_tokens must be less than or equal to max_chunk_tokens",
+        )
+    chunker = AdaptiveSemanticChunker(
+        max_chunk_tokens=payload.max_chunk_tokens,
+        min_chunk_tokens=payload.min_chunk_tokens,
+        similarity_threshold=payload.similarity_threshold,
+    )
+    chunks = chunker.chunk_document(doc_id=payload.doc_id, text=payload.text)
+
+    # Record into shared gateway telemetry
+    _semantic_chunker.telemetry.documents_processed += 1
+    _semantic_chunker.telemetry.total_chunks_emitted += len(chunks)
+    _semantic_chunker.telemetry.semantic_breakpoints += chunker.telemetry.semantic_breakpoints
+    _semantic_chunker.telemetry.structural_splits += chunker.telemetry.structural_splits
+    _semantic_chunker.telemetry.max_token_splits += chunker.telemetry.max_token_splits
+    _semantic_chunker.telemetry.cumulative_coherence += chunker.telemetry.cumulative_coherence
+
+    return {
+        "doc_id": payload.doc_id,
+        "chunk_count": len(chunks),
+        "chunks": [
+            {
+                "chunk_id": c.chunk_id,
+                "index": c.index,
+                "text": c.text,
+                "token_estimate": c.token_estimate,
+                "boundary_reason": c.boundary_reason,
+                "coherence_score": c.coherence_score,
+            }
+            for c in chunks
+        ],
+    }
+
+
+@app.get("/v1/ingestion/semantic/telemetry", tags=["Ingestion"])
+async def get_semantic_ingestion_telemetry() -> dict:
+    return _semantic_chunker.telemetry.snapshot()
+
