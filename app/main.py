@@ -21,6 +21,7 @@ from app.resilience.load_shedder import ConcurrencyLoadShedder
 from app.resilience.rate_limiter import HierarchicalQuotaManager
 from app.resilience.sla_tiers import TieredQuotaManager
 from app.retrieval.cross_encoder_reranker import CrossEncoderAttentionReranker
+from app.retrieval.hierarchical_retriever import HierarchicalParentRetriever
 from app.retrieval.knowledge_graph import KnowledgeGraphIndex
 from app.retrieval.query_planner import (
     AdaptiveQueryDecomposer,
@@ -86,6 +87,7 @@ store = InMemoryVectorStore(dimension=DIMENSION)
 reranker = ExactTokenOverlapReranker()
 compressor = CrossEncoderContextCompressor(max_tokens_per_chunk=64)
 cross_encoder = CrossEncoderAttentionReranker()
+hierarchical_retriever = HierarchicalParentRetriever()
 
 
 def dummy_text_to_embedding(text: str, dim: int = DIMENSION) -> np.ndarray:
@@ -944,8 +946,12 @@ _semantic_chunker = AdaptiveSemanticChunker()
 
 
 class SemanticIngestRequest(BaseModel):
-    doc_id: str = Field(..., min_length=1, description="Unique source document identifier")
-    text: str = Field(..., min_length=1, description="Raw document text or Markdown content")
+    doc_id: str = Field(
+        ..., min_length=1, description="Unique source document identifier"
+    )
+    text: str = Field(
+        ..., min_length=1, description="Raw document text or Markdown content"
+    )
     max_chunk_tokens: int = Field(default=180, ge=16, le=2048)
     min_chunk_tokens: int = Field(default=24, ge=4, le=512)
     similarity_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
@@ -968,10 +974,14 @@ async def ingest_semantic_document(payload: SemanticIngestRequest) -> dict:
     # Record into shared gateway telemetry
     _semantic_chunker.telemetry.documents_processed += 1
     _semantic_chunker.telemetry.total_chunks_emitted += len(chunks)
-    _semantic_chunker.telemetry.semantic_breakpoints += chunker.telemetry.semantic_breakpoints
+    _semantic_chunker.telemetry.semantic_breakpoints += (
+        chunker.telemetry.semantic_breakpoints
+    )
     _semantic_chunker.telemetry.structural_splits += chunker.telemetry.structural_splits
     _semantic_chunker.telemetry.max_token_splits += chunker.telemetry.max_token_splits
-    _semantic_chunker.telemetry.cumulative_coherence += chunker.telemetry.cumulative_coherence
+    _semantic_chunker.telemetry.cumulative_coherence += (
+        chunker.telemetry.cumulative_coherence
+    )
 
     return {
         "doc_id": payload.doc_id,
@@ -994,3 +1004,48 @@ async def ingest_semantic_document(payload: SemanticIngestRequest) -> dict:
 async def get_semantic_ingestion_telemetry() -> dict:
     return _semantic_chunker.telemetry.snapshot()
 
+
+class HierarchicalDocumentItem(BaseModel):
+    doc_id: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HierarchicalRetrieveRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    top_k_parents: int = Field(default=3, ge=1, le=20)
+    child_candidate_pool: int = Field(default=12, ge=1, le=100)
+    documents: list[HierarchicalDocumentItem] = Field(default_factory=list)
+
+
+@app.post("/v1/retrieve/hierarchical", tags=["Retrieval"])
+async def retrieve_hierarchical_parents(
+    payload: HierarchicalRetrieveRequest,
+) -> dict[str, Any]:
+    ingested_summary = []
+    for doc in payload.documents:
+        ingested_summary.append(
+            hierarchical_retriever.ingest_document(
+                doc_id=doc.doc_id,
+                text=doc.text,
+                metadata=doc.metadata,
+            )
+        )
+    retrieval_result = hierarchical_retriever.retrieve(
+        query=payload.query,
+        top_k_parents=payload.top_k_parents,
+        child_candidate_pool=payload.child_candidate_pool,
+    )
+    return {
+        "status": "success",
+        "ingested": ingested_summary,
+        **retrieval_result,
+    }
+
+
+@app.get("/v1/retrieval/hierarchical/telemetry", tags=["Retrieval"])
+async def get_hierarchical_retrieval_telemetry() -> dict[str, Any]:
+    return {
+        "status": "operational",
+        "hierarchical_retrieval": hierarchical_retriever.stats(),
+    }
