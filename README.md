@@ -393,3 +393,8 @@ Automated evaluation framework calculating claim-level lexical and semantic cita
 - **Engine (`app/ingestion/semantic_chunker.py`):** Implemented `AdaptiveSemanticChunker` combining Markdown structural boundary segmentation with sliding-window sentence embedding cosine-valley breakpoint detection.
 - **Bounded Coherence:** Enforces configurable `min_chunk_tokens` and `max_chunk_tokens` guardrails while tracking per-chunk topical coherence scores and split reasons (`structural`, `semantic_shift`, `max_tokens`, `eof`).
 - **Gateway APIs (`app/main.py`):** Exposed `POST /v1/ingest/semantic` and `GET /v1/ingestion/semantic/telemetry` with OpenAPI schema parity.
+
+### Phase 46: Hierarchical Parent-Document Retrieval & Small-to-Big Context Expansion
+- **Two-Tier Structural Index (`app/retrieval/hierarchical_retriever.py`):** Partitions documents into broad parent structural sections (`parent_max_tokens=420`) and overlapping fine-grained child search chunks (`child_max_tokens=96`).
+- **Small-to-Big Expansion & Corroboration Scoring:** Matches high-precision child chunks at query time, deduplicates parent section IDs, applies sibling corroboration boosts, and returns full surrounding parent context with expansion ratio telemetry.
+- **Gateway Endpoints:** `POST /v1/retrieve/hierarchical` and `GET /v1/retrieval/hierarchical/telemetry`.

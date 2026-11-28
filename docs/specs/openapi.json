@@ -1207,6 +1207,72 @@
           }
         }
       }
+    },
+    "/v1/retrieve/hierarchical": {
+      "post": {
+        "tags": [
+          "Retrieval"
+        ],
+        "summary": "Retrieve Hierarchical Parents",
+        "operationId": "retrieve_hierarchical_parents_v1_retrieve_hierarchical_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HierarchicalRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Retrieve Hierarchical Parents V1 Retrieve Hierarchical Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/retrieval/hierarchical/telemetry": {
+      "get": {
+        "tags": [
+          "Retrieval"
+        ],
+        "summary": "Get Hierarchical Retrieval Telemetry",
+        "operationId": "get_hierarchical_retrieval_telemetry_v1_retrieval_hierarchical_telemetry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Hierarchical Retrieval Telemetry V1 Retrieval Hierarchical Telemetry Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1382,6 +1448,66 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HierarchicalDocumentItem": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Doc Id"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "text"
+        ],
+        "title": "HierarchicalDocumentItem"
+      },
+      "HierarchicalRetrieveRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query"
+          },
+          "top_k_parents": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K Parents",
+            "default": 3
+          },
+          "child_candidate_pool": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Child Candidate Pool",
+            "default": 12
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/HierarchicalDocumentItem"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "HierarchicalRetrieveRequest"
       },
       "IngestionRequest": {
         "properties": {
